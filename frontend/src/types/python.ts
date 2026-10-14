@@ -1,4 +1,6 @@
-export type PythonSymbolKind = 'file' | 'class' | 'method' | 'function' | 'async_method' | 'async_function' | 'code';
+import type { OdooClassInfo, OdooFieldInfo, OdooMethodInfo } from './odoo';
+
+export type PythonSymbolKind = 'file' | 'class' | 'method' | 'function' | 'async_method' | 'async_function' | 'code' | 'odoo_field';
 
 export type PythonSymbol = {
   id: string;
@@ -12,11 +14,17 @@ export type PythonSymbol = {
   column_start: number | null;
   decorators: string[];
   parameters: string | null;
+  odoo_class: OdooClassInfo | null;
+  odoo_field: OdooFieldInfo | null;
+  odoo_method: OdooMethodInfo | null;
   children: PythonSymbol[];
 };
 
 export type PythonInspection = {
   file: PythonSymbol;
   symbol_count: number;
+  odoo_model_count: number;
+  odoo_field_count: number;
+  odoo_route_count: number;
   parse_error: string | null;
 };

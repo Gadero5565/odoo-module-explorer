@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.schemas.analysis import AnalyzeRequest
+from app.schemas.odoo_inspection import OdooClassInfo, OdooFieldInfo, OdooMethodInfo
 
 
 class PythonInspectRequest(AnalyzeRequest):
@@ -14,7 +15,7 @@ class PythonInspectRequest(AnalyzeRequest):
 class PythonSymbol(BaseModel):
     id: str
     name: str
-    kind: Literal['file', 'class', 'method', 'function', 'async_method', 'async_function', 'code']
+    kind: Literal['file', 'class', 'method', 'function', 'async_method', 'async_function', 'code', 'odoo_field']
     relative_path: str
     size_bytes: int = 0
     line_count: int = 0
@@ -23,10 +24,16 @@ class PythonSymbol(BaseModel):
     column_start: int | None = None
     decorators: list[str] = Field(default_factory=list)
     parameters: str | None = None
+    odoo_class: OdooClassInfo | None = None
+    odoo_field: OdooFieldInfo | None = None
+    odoo_method: OdooMethodInfo | None = None
     children: list['PythonSymbol'] = Field(default_factory=list)
 
 
 class PythonInspection(BaseModel):
     file: PythonSymbol
     symbol_count: int = 0
+    odoo_model_count: int = 0
+    odoo_field_count: int = 0
+    odoo_route_count: int = 0
     parse_error: str | None = None

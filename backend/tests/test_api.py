@@ -8,7 +8,7 @@ client = TestClient(app)
 
 
 def test_health():
-    assert client.get("/api/health").json() == {"status": "ok", "phase": "2"}
+    assert client.get("/api/health").json() == {"status": "ok", "phase": "3"}
 
 
 def test_demo_analysis():
@@ -94,3 +94,23 @@ def test_python_inspection_handles_bad_syntax(tmp_path):
     })
     assert res.status_code == 200
     assert 'Syntax error' in res.json()['parse_error']
+
+
+def test_demo_odoo_inspection_field_metadata_and_routes():
+    demo = client.get('/api/config').json()['demo_module_path']
+    model = client.post('/api/python/inspect', json={
+        'module_path': demo, 'relative_path': 'models/calendar_edition.py',
+    })
+    assert model.status_code == 200
+    payload = model.json()
+    assert payload['odoo_model_count'] == 1
+    assert payload['odoo_field_count'] == 4
+    klass = next(item for item in payload['file']['children'] if item['kind'] == 'class')
+    assert klass['odoo_class']['model_name'] == 'demo.calendar.edition'
+    assert klass['odoo_class']['field_count'] == 4
+
+    controller = client.post('/api/python/inspect', json={
+        'module_path': demo, 'relative_path': 'controllers/preview.py',
+    })
+    assert controller.status_code == 200
+    assert controller.json()['odoo_route_count'] == 1

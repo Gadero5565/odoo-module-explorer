@@ -83,6 +83,7 @@ export function categoryColor(category: string): string {
 
 export function nodeColor(node: FileNode | PythonSymbol): string {
   if (node.kind === 'directory') return '#347dba';
+  if (node.kind === 'odoo_field') return '#39b9a5';
   if (node.kind === 'class') return '#529ce7';
   if (node.kind === 'method' || node.kind === 'async_method') return '#6ab6d2';
   if (node.kind === 'function' || node.kind === 'async_function') return '#907fda';

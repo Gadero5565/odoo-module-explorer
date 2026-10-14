@@ -6,7 +6,7 @@ Target Odoo versions: **16, 17, 18, 19**. Standalone local application first; ed
 |---|---|---|
 | 1 | Scanner + treemap | Select an addon, see sizes/counts/lines, drill into folders, inspect files, rank and filter, tests pass |
 | 2 | Python syntax parser | Click Python files to view nested classes, functions, methods, decorators and sizes |
-| 3 | Odoo Python semantics | Detect models and inheritance, fields, computed methods, controller routes, constraints |
+| 3 | Odoo Python semantics | Detect models and inheritance, fields, computed methods, controller routes, constraints; **local acceptance pending** |
 | 4 | XML & QWeb | Parse views, records, actions, menus, inheritance and templates |
 | 5 | JS & OWL | JS classes, functions, component/template links, services and registrations |
 | 6 | SCSS/CSS | Selectors, variables, mixins, rules and file metrics |
@@ -19,6 +19,17 @@ Target Odoo versions: **16, 17, 18, 19**. Standalone local application first; ed
 ### Release rule
 
 Do not push a phase before the user runs and accepts it locally. Keep automated checks passing before every commit.
+
+### Phase 3 manual acceptance checklist
+
+- [ ] Open sample `models/calendar_edition.py`, inspect its Odoo model metadata and 4 field nodes.
+- [ ] Inspect `name` (Char/required), `day_ids` (One2many comodel) and `day_count` (computed field).
+- [ ] Inspect `_compute_day_count` (@api.depends) and `action_publish` (business action).
+- [ ] Open `controllers/preview.py`, inspect the HTTP controller and route metadata.
+- [ ] Inspect real `demo_odoo_module/models/calendar_edition.py` and `calendar_import.py`.
+- [ ] Verify `Other code` and child symbols still add up to exact physical file and class totals.
+- [ ] Check breadcrumb return, Size/Lines switching, search, and non-Python file selection.
+- [ ] Confirm the frontend build locally and backend tests pass.
 
 ### Phase 2 manual acceptance checklist
 

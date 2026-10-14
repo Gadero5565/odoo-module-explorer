@@ -10,6 +10,7 @@ import io
 import tokenize
 from pathlib import Path
 
+from app.parsers.odoo_parser import OdooAliases, describe_class, describe_field, describe_method
 from app.schemas.python_inspection import PythonInspection, PythonSymbol
 
 MAX_PYTHON_BYTES = 4 * 1024 * 1024
@@ -73,6 +74,10 @@ class _Parser:
         self.path = path
         self.line_sizes = [len(line) for line in original.splitlines(keepends=True)]
         self.created = 0
+        self.aliases: OdooAliases | None = None
+        self.odoo_model_count = 0
+        self.odoo_field_count = 0
+        self.odoo_route_count = 0
 
     def _measure(self, start: int, end: int) -> tuple[int, int]:
         sizes = self.line_sizes[start - 1:end]
@@ -117,6 +122,15 @@ class _Parser:
         end = item.end_lineno or item.lineno
         size_bytes, line_count = self._measure(start, end)
         # AST node positions distinguish same-name redefinitions by source line.
+        class_info = describe_class(item, self.aliases) if is_class and self.aliases else None
+        method_info = (describe_method(item, self.aliases)
+                       if not is_class and self.aliases and
+                       ((parent and parent.odoo_class is not None) or
+                        any(self.aliases.is_route(d) for d in item.decorator_list)) else None)
+        if class_info and class_info.category != 'controller':
+            self.odoo_model_count += 1
+        if method_info:
+            self.odoo_route_count += len(method_info.routes)
         node = PythonSymbol(
             id=f'{self.path}::{kind}:{item.name}@{start}', name=item.name,
             kind=kind, relative_path=self.path,
@@ -124,7 +138,32 @@ class _Parser:
             size_bytes=size_bytes, line_count=line_count,
             decorators=decorators,
             parameters=None if is_class else _parameters(item),
+            odoo_class=class_info, odoo_method=method_info,
         )
+        if is_class and class_info and class_info.category != 'controller':
+            for stmt in item.body:
+                field = describe_field(stmt, self.aliases)
+                if field is None:
+                    continue
+                field_name, field_info = field
+                field_start = stmt.lineno
+                field_end = stmt.end_lineno or stmt.lineno
+                field_bytes, field_lines = self._measure(field_start, field_end)
+                node.children.append(PythonSymbol(
+                    id=f'{self.path}::odoo_field:{field_name}@{field_start}',
+                    name=field_name, kind='odoo_field', relative_path=self.path,
+                    line_start=field_start, line_end=field_end,
+                    column_start=stmt.col_offset, size_bytes=field_bytes,
+                    line_count=field_lines, odoo_field=field_info,
+                ))
+                self.odoo_field_count += 1
+                class_info.field_types[field_info.field_type] = (
+                    class_info.field_types.get(field_info.field_type, 0) + 1
+                )
+            class_info.field_count = sum(c.kind == 'odoo_field' for c in node.children)
+            class_info.method_count = sum(
+                isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)) for stmt in item.body
+            )
         for child in _nested_definitions(item.body):
             node.children.append(self.symbol(child, node))
         self._add_remainder(node, start, end)
@@ -140,10 +179,16 @@ class _Parser:
         )
         try:
             parsed = ast.parse(source, filename=self.path)
+            self.aliases = OdooAliases(parsed)
             for item in _nested_definitions(parsed.body):
                 root.children.append(self.symbol(item))
             self._add_remainder(root, 1, len(self.line_sizes))
-            return PythonInspection(file=root, symbol_count=self.created)
+            return PythonInspection(
+                file=root, symbol_count=self.created,
+                odoo_model_count=self.odoo_model_count,
+                odoo_field_count=self.odoo_field_count,
+                odoo_route_count=self.odoo_route_count,
+            )
         except SyntaxError as exc:
             return PythonInspection(
                 file=root, symbol_count=0,

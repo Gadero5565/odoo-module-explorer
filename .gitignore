@@ -1,35 +1,25 @@
 # Python
 __pycache__/
 *.py[cod]
-*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 .venv/
 venv/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
+*.egg-info/
 .coverage
 htmlcov/
 
-# Node / React
+# Node
 node_modules/
-dist/
-.vite/
-coverage/
-*.log
+frontend/dist/
+frontend/*.tsbuildinfo
 
-# Environment variables and secrets
-.env
-.env.*
-!.env.example
-
-# IDE
+# IDE / OS
 .idea/
 .vscode/
-
-# Operating systems
 .DS_Store
 Thumbs.db
-
-# Build artifacts
-build/
-*.zip
+*.log
+.env
+.env.*

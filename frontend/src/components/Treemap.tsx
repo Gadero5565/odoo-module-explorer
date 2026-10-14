@@ -25,7 +25,7 @@ export default function Treemap({ folder, metric, selectedId, onSelect }: Props)
       formatter: (params: any) => {
         const item = nodes.current.get(String(params.data?.id));
         if (!item) return '';
-        return `<strong>${escapeHtml(item.name)}</strong><br/>Size: ${formatBytes(item.size_bytes)}<br/>Files: ${"file_count" in item ? formatNumber(item.file_count) : "n/a"}<br/>Lines: ${formatNumber(item.line_count)}`;
+        return `<strong>${escapeHtml(item.name)}</strong>${"odoo_field" === item.kind ? " (Odoo field)" : ""}<br/>Size: ${formatBytes(item.size_bytes)}<br/>Files: ${"file_count" in item ? formatNumber(item.file_count) : "n/a"}<br/>Lines: ${formatNumber(item.line_count)}`;
       },
     },
     series: [{

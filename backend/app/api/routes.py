@@ -16,7 +16,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 @router.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "phase": "2"}
+    return {"status": "ok", "phase": "3"}
 
 
 @router.get("/config", response_model=ConfigResponse)
