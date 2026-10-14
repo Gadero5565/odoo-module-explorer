@@ -1,5 +1,6 @@
 import type { DisplayFilters, FileNode, Metric } from '../types/analysis';
 import type { PythonSymbol } from '../types/python';
+import type { XMLSymbol } from '../types/xml';
 
 const SOURCE_EXTENSIONS = new Set(['.py', '.xml', '.js', '.jsx', '.ts', '.tsx', '.scss', '.css', '.less']);
 const EXCLUDED_DIRS = new Set(['data', 'demo', 'i18n']);
@@ -54,12 +55,12 @@ export function parentId(id: string): string {
   return index < 0 ? '.' : id.slice(0, index);
 }
 
-export function metricValue(node: FileNode | PythonSymbol, metric: Metric): number {
+export function metricValue(node: FileNode | PythonSymbol | XMLSymbol, metric: Metric): number {
   if (metric === 'file_count') return 'file_count' in node ? node.file_count : 0;
   return node[metric];
 }
 
-export function sizeMetric(node: FileNode | PythonSymbol, metric: Metric): number {
+export function sizeMetric(node: FileNode | PythonSymbol | XMLSymbol, metric: Metric): number {
   // ECharts cannot display zero-area rectangles. A minimal rectangle keeps
   // files with zero LOC and empty directories selectable in other modes.
   return Math.max(metricValue(node, metric), 1);
@@ -81,8 +82,11 @@ export function categoryColor(category: string): string {
   return ({ Python: '#4e97ee', XML: '#5ac8ad', JavaScript: '#ad88f6', Styles: '#e3a85d', Images: '#d77c92', CSV: '#8aa1b7', Translation: '#8aa1b7', Other: '#607890' } as Record<string, string>)[category] || '#4e97ee';
 }
 
-export function nodeColor(node: FileNode | PythonSymbol): string {
+export function nodeColor(node: FileNode | PythonSymbol | XMLSymbol): string {
   if (node.kind === 'directory') return '#347dba';
+  if ('metadata' in node) {
+    return ({ view: '#39b9a5', record: '#48a68b', action: '#e0ab65', menu: '#b5a0f0', template: '#9a8cf1', xpath: '#e59588', field: '#68c0ac', root: '#347dba', element: '#668ba9', other: '#53677c', file: '#5ac8ad' } as Record<string, string>)[node.kind] || '#5ac8ad';
+  }
   if (node.kind === 'odoo_field') return '#39b9a5';
   if (node.kind === 'class') return '#529ce7';
   if (node.kind === 'method' || node.kind === 'async_method') return '#6ab6d2';
@@ -125,4 +129,25 @@ export function getFileBreakdown(root: FileNode): { name: string; count: number;
   }
   return [...stats].map(([name, stats]) => ({ name, ...stats, color: categoryColor(name) }))
     .sort((a, b) => b.bytes - a.bytes || a.name.localeCompare(b.name));
+}
+
+
+export function indexXMLSymbols(root: XMLSymbol): Map<string, XMLSymbol> {
+  const index = new Map<string, XMLSymbol>();
+  const stack = [root];
+  while (stack.length) {
+    const item = stack.pop()!;
+    index.set(item.id, item);
+    stack.push(...item.children);
+  }
+  return index;
+}
+
+export function xmlSymbolPath(root: XMLSymbol, wanted: string): XMLSymbol[] {
+  if (root.id === wanted) return [root];
+  for (const child of root.children) {
+    const path = xmlSymbolPath(child, wanted);
+    if (path.length) return [root, ...path];
+  }
+  return [];
 }

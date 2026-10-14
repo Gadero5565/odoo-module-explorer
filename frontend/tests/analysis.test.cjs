@@ -78,3 +78,20 @@ test('Python symbols have stable indexes and breadcrumb paths', () => {
   assert.equal(metricValue(method, 'file_count'), 0);
   assert.ok(nodeColor(klass).startsWith('#'));
 });
+
+test('XML symbols are indexed with correct ancestor breadcrumbs and metrics', () => {
+  const { indexXMLSymbols, xmlSymbolPath, metricValue, nodeColor } = runtimeModule.exports;
+  const xpath = { id: 'x.xml::xml:3@42', name: "//field[@name='year']", kind: 'xpath',
+    tag: 'xpath', metadata: { xpath_expr: "//field[@name='year']" },
+    size_bytes: 51, line_count: 4, children: [] };
+  const view = { id: 'x.xml::xml:1@10', name: 'my_view', kind: 'view', tag: 'record',
+    metadata: { xml_id: 'my_view' }, size_bytes: 90, line_count: 8, children: [xpath] };
+  const file = { id: 'x.xml', name: 'x.xml', kind: 'file', tag: '', metadata: {},
+    size_bytes: 110, line_count: 10, children: [view] };
+  assert.equal(indexXMLSymbols(file).get(xpath.id).metadata.xpath_expr, "//field[@name='year']");
+  assert.deepEqual(xmlSymbolPath(file, xpath.id).map(item => item.name), ['x.xml', 'my_view', "//field[@name='year']"]);
+  assert.equal(metricValue(xpath, 'size_bytes'), 51);
+  assert.equal(metricValue(xpath, 'file_count'), 0);
+  assert.equal(nodeColor(xpath), '#e59588');
+  assert.equal(nodeColor(file), '#5ac8ad');
+});

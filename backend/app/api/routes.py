@@ -1,14 +1,17 @@
 """Localhost-only analysis endpoints."""
 
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
 from app.core.module_detector import SUPPORTED_VERSIONS, inspect_module
 from app.core.scanner import AnalysisError, DirectoryScanner, resolve_module_path
+from app.core.source_files import resolve_source_file
 from app.parsers.python_parser import MAX_PYTHON_BYTES, PythonInspectionError, inspect_python_source
+from app.parsers.xml_parser import MAX_XML_BYTES, XMLInspectionError, inspect_xml_source
 from app.schemas.analysis import AnalysisResult, AnalyzeRequest, ConfigResponse, ModuleDetails
 from app.schemas.python_inspection import PythonInspectRequest, PythonInspection
+from app.schemas.xml_inspection import XMLInspectRequest, XMLInspection
 
 router = APIRouter(prefix="/api")
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -16,7 +19,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 @router.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "phase": "3"}
+    return {"status": "ok", "phase": "4"}
 
 
 @router.get("/config", response_model=ConfigResponse)
@@ -46,25 +49,23 @@ def analyze(request: AnalyzeRequest) -> AnalysisResult:
 def inspect_python(request: PythonInspectRequest) -> PythonInspection:
     """Inspect one .py file under a validated addon root, without executing it."""
     try:
-        root = resolve_module_path(request.module_path.strip())
-        inspect_module(root, request.version_override)
-        relative = request.relative_path
-        relative_parts = PurePosixPath(relative).parts
-        if (not relative.endswith('.py') or not relative_parts
-                or any(piece in ('.', '..', '') for piece in relative_parts)
-                or relative.startswith('/') or '\\' in relative or ':' in relative):
-            raise AnalysisError('Expected a relative .py path inside the selected module.')
-        path = root
-        for segment in relative_parts:
-            path = path / segment
-            if path.is_symlink():
-                raise AnalysisError('Symbolic links are not supported for Python inspection.')
-        if not path.is_file() or not path.resolve().is_relative_to(root):
-            raise AnalysisError('Python file does not exist inside this addon.')
-        if path.stat().st_size > MAX_PYTHON_BYTES:
-            raise AnalysisError('Python file exceeds the 4 MiB static-analysis limit.')
-        return inspect_python_source(relative, path.read_bytes())
+        path = resolve_source_file(request.module_path, request.version_override,
+                                   request.relative_path, '.py', MAX_PYTHON_BYTES)
+        return inspect_python_source(request.relative_path, path.read_bytes())
     except (AnalysisError, PythonInspectionError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except OSError as exc:
         raise HTTPException(status_code=400, detail='Could not read Python source file.') from exc
+
+
+@router.post("/xml/inspect", response_model=XMLInspection)
+def inspect_xml(request: XMLInspectRequest) -> XMLInspection:
+    """Parse Odoo data, views and QWeb XML without loading external entities."""
+    try:
+        path = resolve_source_file(request.module_path, request.version_override,
+                                   request.relative_path, '.xml', MAX_XML_BYTES)
+        return inspect_xml_source(request.relative_path, path.read_bytes())
+    except (AnalysisError, XMLInspectionError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except OSError as exc:
+        raise HTTPException(status_code=400, detail='Could not read XML source file.') from exc

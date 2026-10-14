@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="demo.CalendarWidgetExtra">
+        <div t-if="props.showDetails" class="calendar-details">
+            <t t-esc="props.title"/>
+        </div>
+    </t>
+    <t t-inherit="demo.CalendarWidget" t-inherit-mode="extension">
+        <xpath expr="//div[@class='o_calendar_widget']" position="inside">
+            <span t-esc="props.subtitle"/>
+        </xpath>
+    </t>
+</templates>

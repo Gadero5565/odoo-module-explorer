@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="view_demo_calendar_edition_list" model="ir.ui.view">
+            <field name="name">demo.calendar.edition.list</field>
+            <field name="model">demo.calendar.edition</field>
+            <field name="arch" type="xml">
+                <list string="Calendar editions">
+                    <field name="name"/>
+                    <field name="year"/>
+                </list>
+            </field>
+        </record>
+        <record id="view_demo_calendar_edition_form_extend" model="ir.ui.view">
+            <field name="name">demo.calendar.edition.form.extend</field>
+            <field name="model">demo.calendar.edition</field>
+            <field name="inherit_id" ref="demo_odoo_module.view_demo_calendar_edition_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='year']" position="after">
+                    <field name="day_count"/>
+                </xpath>
+            </field>
+        </record>
+        <record id="action_demo_calendar_edition" model="ir.actions.act_window">
+            <field name="name">Calendar Editions</field>
+            <field name="res_model">demo.calendar.edition</field>
+            <field name="view_mode">list,form</field>
+        </record>
+        <menuitem id="menu_demo_calendar_root" name="Demo Calendar" sequence="10"/>
+        <menuitem id="menu_demo_calendar_editions" name="Editions"
+                  parent="menu_demo_calendar_root" action="action_demo_calendar_edition"/>
+    </data>
+</odoo>

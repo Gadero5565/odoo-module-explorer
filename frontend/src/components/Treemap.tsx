@@ -3,17 +3,18 @@ import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import type { FileNode, Metric } from '../types/analysis';
 import type { PythonSymbol } from '../types/python';
+import type { XMLSymbol } from '../types/xml';
 import { formatBytes, formatNumber, metricValue, nodeColor, sizeMetric } from '../lib/analysis';
 
 type Props = {
-  folder: FileNode | PythonSymbol;
+  folder: FileNode | PythonSymbol | XMLSymbol;
   metric: Metric;
   selectedId: string;
-  onSelect: (node: FileNode | PythonSymbol) => void;
+  onSelect: (node: FileNode | PythonSymbol | XMLSymbol) => void;
 };
 
 export default function Treemap({ folder, metric, selectedId, onSelect }: Props) {
-  const nodes = useRef(new Map<string, FileNode | PythonSymbol>());
+  const nodes = useRef(new Map<string, FileNode | PythonSymbol | XMLSymbol>());
   nodes.current = new Map(folder.children.map(node => [node.id, node]));
 
   const option = useMemo<EChartsOption>(() => ({
@@ -25,7 +26,7 @@ export default function Treemap({ folder, metric, selectedId, onSelect }: Props)
       formatter: (params: any) => {
         const item = nodes.current.get(String(params.data?.id));
         if (!item) return '';
-        return `<strong>${escapeHtml(item.name)}</strong>${"odoo_field" === item.kind ? " (Odoo field)" : ""}<br/>Size: ${formatBytes(item.size_bytes)}<br/>Files: ${"file_count" in item ? formatNumber(item.file_count) : "n/a"}<br/>Lines: ${formatNumber(item.line_count)}`;
+        return `<strong>${escapeHtml(item.name)}</strong>${"odoo_field" === item.kind ? " (Odoo field)" : "metadata" in item ? ` (${item.kind})` : ""}<br/>Size: ${formatBytes(item.size_bytes)}<br/>Files: ${"file_count" in item ? formatNumber(item.file_count) : "n/a"}<br/>Lines: ${formatNumber(item.line_count)}`;
       },
     },
     series: [{

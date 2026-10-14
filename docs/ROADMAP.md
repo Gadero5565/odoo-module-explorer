@@ -6,8 +6,8 @@ Target Odoo versions: **16, 17, 18, 19**. Standalone local application first; ed
 |---|---|---|
 | 1 | Scanner + treemap | Select an addon, see sizes/counts/lines, drill into folders, inspect files, rank and filter, tests pass |
 | 2 | Python syntax parser | Click Python files to view nested classes, functions, methods, decorators and sizes |
-| 3 | Odoo Python semantics | Detect models and inheritance, fields, computed methods, controller routes, constraints; **local acceptance pending** |
-| 4 | XML & QWeb | Parse views, records, actions, menus, inheritance and templates |
+| 3 | Odoo Python semantics | Detect models and inheritance, fields, computed methods, controller routes, constraints; **accepted and pushed** |
+| 4 | XML & QWeb | Parse views, records, actions, menus, inheritance, XPath, and QWeb templates; **ready for local acceptance** |
 | 5 | JS & OWL | JS classes, functions, component/template links, services and registrations |
 | 6 | SCSS/CSS | Selectors, variables, mixins, rules and file metrics |
 | 7 | Advanced exploration | Odoo logical models, cross references, search, additional metrics, graph views |
@@ -19,6 +19,17 @@ Target Odoo versions: **16, 17, 18, 19**. Standalone local application first; ed
 ### Release rule
 
 Do not push a phase before the user runs and accepts it locally. Keep automated checks passing before every commit.
+
+### Phase 4 manual acceptance checklist
+
+- [ ] Open `views/calendar_extended.xml` in the sample module and drill into its `<odoo>` / `<data>` hierarchy.
+- [ ] Find `view_demo_calendar_edition_list`: verify model `demo.calendar.edition` and view type `list`.
+- [ ] Find `view_demo_calendar_edition_form_extend`: verify `inherit_id` and XPath `//field[@name='year']` with `position=after`.
+- [ ] Find `action_demo_calendar_edition`: verify action model `ir.actions.act_window` and target `demo.calendar.edition`.
+- [ ] Find `menu_demo_calendar_editions`: verify parent menu and action reference.
+- [ ] Open `static/src/components/calendar_widget/calendar_widget_extension.xml` and inspect QWeb `t-name`, `t-inherit`, and XPath attributes.
+- [ ] Analyze a real Odoo 16–19 module XML file (e.g. `demo_odoo_module/views/calendar_edition_views.xml`) and test Size / Lines, drill-down, and breadcrumbs.
+- [ ] Verify Python/Odoo inspections still work; run `pytest -q` and `npm test && npm run build`.
 
 ### Phase 3 manual acceptance checklist
 

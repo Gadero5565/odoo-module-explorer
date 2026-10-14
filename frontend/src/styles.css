@@ -104,3 +104,6 @@ a { color: inherit; text-decoration: none; }
 .odoo-route { padding: 9px 10px; border: 1px solid #344a63; border-radius: 7px; background: #14263a; margin-top: 9px; }
 .odoo-route .section-title { margin-bottom: 3px; }
 .semantic-note { font-size: 10px; color: #94b5d3; line-height: 1.6; }
+
+/* XML metadata can contain long XPath expressions and dotted identifiers. */
+.detail-stat strong { min-width: 0; overflow-wrap: anywhere; }
