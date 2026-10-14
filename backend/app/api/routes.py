@@ -5,19 +5,20 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 
 from app.core.module_detector import SUPPORTED_VERSIONS, inspect_module
-from app.core.scanner import AnalysisError, DirectoryScanner, resolve_module_path
+from app.core.scanner import AnalysisError, resolve_module_path
 from app.core.source_files import resolve_source_file
 from app.parsers.js_parser import MAX_JS_BYTES, JSInspectionError, inspect_js_source
-from app.parsers.style_parser import MAX_STYLE_BYTES, StyleInspectionError, inspect_style_source
 from app.parsers.python_parser import MAX_PYTHON_BYTES, PythonInspectionError, inspect_python_source
+from app.parsers.style_parser import MAX_STYLE_BYTES, StyleInspectionError, inspect_style_source
 from app.parsers.xml_parser import MAX_XML_BYTES, XMLInspectionError, inspect_xml_source
-from app.schemas.analysis import AnalysisResult, AnalyzeRequest, ConfigResponse, ModuleDetails
+from app.schemas.analysis import AnalysisResult, AnalyzeRequest, ConfigResponse, RefreshRequest, RefreshResult
 from app.schemas.insights import InsightRequest, InsightsResponse
-from app.services.insights import build_insights
 from app.schemas.js_inspection import JSInspectRequest, JSInspection
 from app.schemas.python_inspection import PythonInspectRequest, PythonInspection
 from app.schemas.style_inspection import StyleInspectRequest, StyleInspection
 from app.schemas.xml_inspection import XMLInspectRequest, XMLInspection
+from app.services.insights import build_insights
+from app.services.refresh import cache
 
 router = APIRouter(prefix="/api")
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -25,7 +26,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 @router.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "phase": "7"}
+    return {"status": "ok", "phase": "8"}
 
 
 @router.get("/config", response_model=ConfigResponse)
@@ -41,12 +42,9 @@ def analyze(request: AnalyzeRequest) -> AnalysisResult:
     try:
         path = resolve_module_path(request.module_path.strip())
         info = inspect_module(path, request.version_override)
-        scanner = DirectoryScanner(path)
-        root = scanner.scan()
-        return AnalysisResult(
-            module=ModuleDetails(**info), root=root,
-            warnings=scanner.warnings, ignored_entries=scanner.ignored_entries,
-        )
+        result, fingerprints = cache.scan(path, info)
+        cache.remember(path, result.revision, fingerprints)
+        return result
     except AnalysisError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -57,7 +55,7 @@ def inspect_python(request: PythonInspectRequest) -> PythonInspection:
     try:
         path = resolve_source_file(request.module_path, request.version_override,
                                    request.relative_path, '.py', MAX_PYTHON_BYTES)
-        return inspect_python_source(request.relative_path, path.read_bytes())
+        return cache.inspect(path, ".py", inspect_python_source, request.relative_path, max_bytes=MAX_PYTHON_BYTES)[0]
     except (AnalysisError, PythonInspectionError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except OSError as exc:
@@ -70,7 +68,7 @@ def inspect_xml(request: XMLInspectRequest) -> XMLInspection:
     try:
         path = resolve_source_file(request.module_path, request.version_override,
                                    request.relative_path, '.xml', MAX_XML_BYTES)
-        return inspect_xml_source(request.relative_path, path.read_bytes())
+        return cache.inspect(path, ".xml", inspect_xml_source, request.relative_path, max_bytes=MAX_XML_BYTES)[0]
     except (AnalysisError, XMLInspectionError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except OSError as exc:
@@ -83,7 +81,7 @@ def inspect_javascript(request: JSInspectRequest) -> JSInspection:
     try:
         path = resolve_source_file(request.module_path, request.version_override,
                                    request.relative_path, '.js', MAX_JS_BYTES)
-        return inspect_js_source(request.relative_path, path.read_bytes())
+        return cache.inspect(path, ".js", inspect_js_source, request.relative_path, max_bytes=MAX_JS_BYTES)[0]
     except (AnalysisError, JSInspectionError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except OSError as exc:
@@ -99,7 +97,7 @@ def inspect_styles(request: StyleInspectRequest) -> StyleInspection:
             raise AnalysisError('Expected a .css or .scss source file.')
         path = resolve_source_file(request.module_path, request.version_override,
                                    request.relative_path, Path(request.relative_path).suffix, MAX_STYLE_BYTES)
-        return inspect_style_source(request.relative_path, path.read_bytes())
+        return cache.inspect(path, suffix, inspect_style_source, request.relative_path, max_bytes=MAX_STYLE_BYTES)[0]
     except (AnalysisError, StyleInspectionError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except OSError as exc:
@@ -112,8 +110,41 @@ def inspect_module_insights(request: InsightRequest) -> InsightsResponse:
     try:
         root = resolve_module_path(request.module_path.strip())
         inspect_module(root, request.version_override)
-        return build_insights(root)
+        analysis, fingerprints = cache.scan(root, inspect_module(root, request.version_override))
+        cache.remember(root, analysis.revision, fingerprints)
+        return cache.get_insights(root, analysis.revision, lambda: build_insights(
+            root, tree=analysis.root, parse_cache=cache, scan_warnings=analysis.warnings,
+        ))
     except AnalysisError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except OSError as exc:
         raise HTTPException(status_code=400, detail='Unable to read module source files.') from exc
+
+
+@router.post('/refresh', response_model=RefreshResult)
+def refresh_module(request: RefreshRequest) -> RefreshResult:
+    """Metadata-only polling with cached source line metrics and optional diff.
+
+    No filesystem watcher threads or unauthenticated filesystem paths are
+    exposed. Only the selected validated addon root is scanned.
+    """
+    try:
+        root = resolve_module_path(request.module_path.strip())
+        info = inspect_module(root, request.version_override)
+        result, fingerprints = cache.scan(root, info)
+        changed = result.revision != request.previous_revision
+        paths, truncated = cache.changes(root, request.previous_revision, fingerprints) if changed else ([], False)
+        cache.remember(root, result.revision, fingerprints)
+        return RefreshResult(changed=changed, revision=result.revision,
+                             changed_paths=paths, paths_truncated=truncated,
+                             analysis=result if changed else None)
+    except AnalysisError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except OSError as exc:
+        raise HTTPException(status_code=400, detail='Could not scan module during refresh.') from exc
+
+
+@router.get('/cache/stats')
+def cache_stats() -> dict[str, int]:
+    """Non-sensitive process cache diagnostics (no paths or source content)."""
+    return cache.stats()

@@ -10,8 +10,8 @@ Target Odoo versions: **16, 17, 18, 19**. Standalone local application first; ed
 | 4 | XML & QWeb | Parse views, records, actions, menus, inheritance, XPath, and QWeb templates; **accepted and pushed** |
 | 5 | JS & OWL | JS classes, functions, OWL template references, hooks, services, and registry declarations; **accepted and pushed** |
 | 6 | SCSS/CSS | Selectors, variables, mixins, rules and file metrics; **accepted and pushed** |
-| 7 | Advanced exploration | Global source search, logical model grouping, static model relationships/graph, source jump, ranking by size/lines/complexity; **ready for local acceptance** |
-| 8 | Watch & performance | Incremental rescans, caching, robustness, security regression and performance tests |
+| 7 | Advanced exploration | Global source search, logical model grouping, static model relationships/graph, source jump, ranking by size/lines/complexity; **accepted and pushed** |
+| 8 | Watch & performance | Signature-based incremental parsers/Insights, metadata polling, bounded cache, race safety and benchmark; **ready for local acceptance** |
 | 9 | Packaging | Standalone CLI launcher, bundled frontend, documentation and first release |
 | E1 | VS Code extension | Webview, analyze active addon, source jump navigation |
 | E2 | PyCharm plugin | Embedded UI, module commands and source navigation |
@@ -19,6 +19,19 @@ Target Odoo versions: **16, 17, 18, 19**. Standalone local application first; ed
 ### Release rule
 
 Do not push a phase before the user runs and accepts it locally. Keep automated checks passing before every commit.
+
+### Phase 8 manual acceptance checklist
+
+- [ ] Launch the project and open the sample module; verify **Auto refresh** is enabled.
+- [ ] Open `models/calendar_edition.py`, change a method in the source, save, wait up to ~4 seconds, and verify the file treemap and inspector reload.
+- [ ] Add a new `.py` file under `models/`; verify file totals, ranking, and treemap update. Delete it again and verify its entry disappears without crashing.
+- [ ] Rename a folder, including while viewing one of its files; the UI should return to the closest remaining folder.
+- [ ] Open **Advanced Insights**, edit a Python field name, and verify global search reflects the changed symbol after refresh.
+- [ ] Toggle Auto refresh **off**, edit a file, verify the UI stays unchanged, and click **Check now** to update manually.
+- [ ] Inspect `GET /api/cache/stats` in FastAPI Swagger before/after inspecting a file twice; confirm parse or line cache hits rise.
+- [ ] Restart the FastAPI server while the browser remains open; verify refresh resumes correctly after reconnection (the previous snapshot can be used if offline).
+- [ ] Analyze the real `demo_odoo_module` addon; verify totals and all Phase 1–7 features still work.
+- [ ] Run `python scripts/benchmark_refresh.py` from project root, backend `pytest -q`, frontend `npm test`, and `npm run build` on Windows. Push only after approving Phase 8.
 
 ### Phase 7 manual acceptance checklist
 

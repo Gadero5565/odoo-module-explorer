@@ -24,9 +24,19 @@ export type ModuleDetails = {
 export type AnalysisResult = {
   module: ModuleDetails;
   root: FileNode;
+  revision: string;
   warnings: { relative_path: string; reason: string }[];
   ignored_entries: number;
 };
 
 export type Metric = 'size_bytes' | 'file_count' | 'line_count';
 export type DisplayFilters = { sourceOnly: boolean; excludeData: boolean };
+
+
+export type RefreshResponse = {
+  changed: boolean;
+  revision: string;
+  changed_paths: string[];
+  paths_truncated: boolean;
+  analysis: AnalysisResult | null;
+};

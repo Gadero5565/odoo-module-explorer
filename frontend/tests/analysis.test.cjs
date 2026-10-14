@@ -131,3 +131,11 @@ test('Stylesheet nodes have stable index, breadcrumbs, colors and size metrics',
   assert.equal(nodeColor({ ...selector, kind: 'variable' }), '#ce88da');
   assert.equal(nodeColor(root), '#e3a85d');
 });
+
+test('Refresh navigation retains existing nodes and falls back after deletion', () => {
+  const { nearestExistingId } = runtimeModule.exports;
+  const index = indexNodes(root);
+  assert.equal(nearestExistingId('models/a.py', index), 'models/a.py');
+  assert.equal(nearestExistingId('models/deleted.py', index), 'models');
+  assert.equal(nearestExistingId('gone/nested/missing.py', index), '.');
+});

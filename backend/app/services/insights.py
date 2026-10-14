@@ -83,7 +83,7 @@ def _function_complexities(data: bytes) -> dict[tuple[str, int], int]:
     return result
 
 
-def build_insights(root: Path) -> InsightsResponse:
+def build_insights(root: Path, tree=None, parse_cache=None, scan_warnings=None) -> InsightsResponse:
     response = InsightsResponse()
     model_map: dict[str, OdooModelSummary] = {}
     symbol_ids: set[str] = set()
@@ -121,9 +121,9 @@ def build_insights(root: Path) -> InsightsResponse:
         symbol_ids.add(node.id)
         return symbol
 
-    scanner = DirectoryScanner(root)
-    tree = scanner.scan()
-    for warning in scanner.warnings:
+    scanner = DirectoryScanner(root) if tree is None else None
+    tree = scanner.scan() if scanner is not None else tree
+    for warning in (scanner.warnings if scanner is not None else (scan_warnings or [])):
         warn(f'{warning.relative_path}: {warning.reason}')
     paths = sorted((node for node in _walk([tree]) if node.kind == 'file'
                     and node.extension in ALLOWED_EXTENSIONS), key=lambda n: n.relative_path)
@@ -152,19 +152,30 @@ def build_insights(root: Path) -> InsightsResponse:
             continue
         attempted_files += 1
         try:
-            data = path.read_bytes()
-            if len(data) > limit or bytes_seen + len(data) > MAX_BYTES or not path.resolve().is_relative_to(root):
+            # Stat every file again to defend against replacements after scanning.
+            live_size = path.stat().st_size
+            if live_size > limit or bytes_seen + live_size > MAX_BYTES:
                 response.skipped_files += 1
                 continue
-            bytes_seen += len(data)
-            if file.extension == '.py':
-                inspection = inspect_python_source(file.relative_path, data)
-            elif file.extension == '.xml':
-                inspection = inspect_xml_source(file.relative_path, data)
-            elif file.extension == '.js':
-                inspection = inspect_js_source(file.relative_path, data)
+            if not path.resolve().is_relative_to(root):
+                response.skipped_files += 1
+                continue
+            bytes_seen += live_size
+            parser = ({'.py': inspect_python_source, '.xml': inspect_xml_source,
+                       '.js': inspect_js_source}.get(file.extension) or inspect_style_source)
+            if parse_cache is not None:
+                inspection, cached_complexities = parse_cache.inspect(
+                    path, file.extension, parser, file.relative_path,
+                    _function_complexities if file.extension == '.py' else None,
+                    max_bytes=limit,
+                )
             else:
-                inspection = inspect_style_source(file.relative_path, data)
+                data = path.read_bytes()
+                if len(data) > limit:
+                    response.skipped_files += 1
+                    continue
+                inspection = parser(file.relative_path, data)
+                cached_complexities = _function_complexities(data) if file.extension == '.py' else None
         except (OSError, ValueError, JSInspectionError) as exc:
             response.skipped_files += 1
             warn(f'{file.relative_path}: {str(exc)[:180]}')
@@ -174,7 +185,7 @@ def build_insights(root: Path) -> InsightsResponse:
             warn(f'{file.relative_path}: {inspection.parse_error}')
             continue
         if file.extension == '.py':
-            complexities = _function_complexities(data)
+            complexities = cached_complexities or {}
             # The tree is a physical source tree. Class/field/ORM associations are
             # attached via explicit AST semantics, not filename heuristics.
             def visit_python(node, owner: str | None = None):

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle, ArrowRight, BarChart3, CheckCircle2, ChevronRight, Code2, Database,
   File, FileCode2, Folder, FolderOpen, Github, HardDrive, Layers3, LoaderCircle,
@@ -12,8 +12,8 @@ import XMLDetails from './components/XMLDetails';
 import JSDetails from './components/JSDetails';
 import StyleDetails from './components/StyleDetails';
 import InsightsPanel from './components/InsightsPanel';
-import { filterTree, formatBytes, formatNumber, metricValue, indexNodes, indexPythonSymbols, indexXMLSymbols, indexJSSymbols, indexStyleSymbols, parentId, pythonSymbolPath, xmlSymbolPath, jsSymbolPath, styleSymbolPath } from './lib/analysis';
-import type { AnalysisResult, DisplayFilters, FileNode, Metric } from './types/analysis';
+import { filterTree, formatBytes, formatNumber, metricValue, indexNodes, indexPythonSymbols, indexXMLSymbols, indexJSSymbols, indexStyleSymbols, parentId, nearestExistingId, pythonSymbolPath, xmlSymbolPath, jsSymbolPath, styleSymbolPath } from './lib/analysis';
+import type { AnalysisResult, DisplayFilters, FileNode, Metric, RefreshResponse } from './types/analysis';
 import type { PythonInspection, PythonSymbol } from './types/python';
 import type { XMLInspection, XMLSymbol } from './types/xml';
 import type { JSInspection, JSSymbol } from './types/javascript';
@@ -70,6 +70,11 @@ export default function App() {
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [insightsError, setInsightsError] = useState<string | null>(null);
   const [pendingJump, setPendingJump] = useState<InsightSymbol | null>(null);
+  const insightsRequestId = useRef(0);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [syncMessage, setSyncMessage] = useState('Automatic refresh is on');
+  const [manualRefreshing, setManualRefreshing] = useState(false);
+  const [changedPaths, setChangedPaths] = useState<string[]>([]);
 
   useEffect(() => {
     fetch('/api/config').then(response => response.ok ? response.json() : null)
@@ -91,6 +96,7 @@ export default function App() {
         throw new Error(typeof detail === 'string' ? detail : 'Analysis failed. Check the selected path and try again.');
       }
       setResult(payload as AnalysisResult);
+      setSyncMessage('Up to date'); setChangedPaths([]);
       setCurrentId('.'); setSelectedId('.'); setSearch(''); setFilters(DEFAULT_FILTERS);
       setPythonFilePath(null); setPythonInspection(null); setPythonError(null);
       setSymbolDrillId(null); setSymbolSelectedId(null);
@@ -100,12 +106,74 @@ export default function App() {
       setJSDrillId(null); setJSSelectedId(null);
       setStyleFilePath(null); setStyleInspection(null); setStyleError(null);
       setStyleDrillId(null); setStyleSelectedId(null);
-      setInsights(null); setInsightsError(null); setPendingJump(null);
+      insightsRequestId.current += 1;
+      setInsights(null); setInsightsError(null); setInsightsLoading(false); setPendingJump(null);
       setWorkspaceMode('explorer');
     } catch (err) {
       setError(err instanceof TypeError ? 'Could not connect to FastAPI. Start the backend on 127.0.0.1:7764.' : (err as Error).message);
     } finally { setLoading(false); }
   }, [versionOverride]);
+
+  /** Refresh checks file signatures, and preserves folder navigation when possible. */
+  const refreshModule = useCallback(async (signal?: AbortSignal, manual = false) => {
+    if (!result) return;
+    if (manual) setManualRefreshing(true);
+    try {
+      const response = await fetch('/api/refresh', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
+        body: JSON.stringify({ module_path: result.module.absolute_path,
+          version_override: versionOverride || null, previous_revision: result.revision }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload?.detail || 'Refresh check failed.');
+      const update = payload as RefreshResponse;
+      if (signal?.aborted) return;
+      if (update.changed && update.analysis) {
+        const freshIndex = indexNodes(update.analysis.root);
+        setResult(update.analysis);
+        setCurrentId(old => nearestExistingId(old, freshIndex));
+        setSelectedId(old => nearestExistingId(old, freshIndex));
+        const retainedFile = (path: string | null) => path && freshIndex.get(path)?.kind === 'file' ? path : null;
+        setPythonFilePath(old => retainedFile(old));
+        setXMLFilePath(old => retainedFile(old));
+        setJSFilePath(old => retainedFile(old));
+        setStyleFilePath(old => retainedFile(old));
+        setPythonInspection(null); setXMLInspection(null);
+        setJSInspection(null); setStyleInspection(null);
+        setSymbolDrillId(null); setSymbolSelectedId(null);
+        setXMLDrillId(null); setXMLSelectedId(null);
+        setJSDrillId(null); setJSSelectedId(null);
+        setStyleDrillId(null); setStyleSelectedId(null);
+        setPendingJump(null);
+        insightsRequestId.current += 1;
+        setInsights(null); setInsightsError(null); setInsightsLoading(false);
+        setChangedPaths(update.changed_paths);
+        setSyncMessage(update.changed_paths[0] === '*'
+          ? 'Index refreshed after reconnect'
+          : `Updated ${update.changed_paths.length}${update.paths_truncated ? '+' : ''} path(s)`);
+      } else {
+        setSyncMessage('Up to date');
+      }
+    } catch (err) {
+      if (!signal?.aborted) setSyncMessage(err instanceof Error ? `Refresh error: ${err.message}` : 'Refresh failed');
+    } finally {
+      if (manual) setManualRefreshing(false);
+    }
+  }, [result, versionOverride]);
+
+  // Polling avoids OS-specific watchers, background threads, and extra deps.
+  // One active request at a time; cleanup aborts stale requests on addon changes.
+  useEffect(() => {
+    if (!result || !autoRefresh || loading) return;
+    const controller = new AbortController();
+    let active = false;
+    const timer = window.setInterval(() => {
+      if (active) return;
+      active = true;
+      void refreshModule(controller.signal).finally(() => { active = false; });
+    }, 4000);
+    return () => { window.clearInterval(timer); controller.abort(); };
+  }, [result, autoRefresh, loading, refreshModule]);
 
   useEffect(() => {
     if (!result || !pythonFilePath) return;
@@ -185,6 +253,7 @@ export default function App() {
 
   const loadInsights = useCallback(async () => {
     if (!result) return;
+    const requestId = ++insightsRequestId.current;
     setInsightsLoading(true); setInsightsError(null);
     try {
       const response = await fetch('/api/insights', {
@@ -193,11 +262,20 @@ export default function App() {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.detail || 'Module-wide indexing failed.');
-      setInsights(payload as InsightsResponse);
+      if (requestId === insightsRequestId.current) setInsights(payload as InsightsResponse);
     } catch (err) {
-      setInsightsError(err instanceof Error ? err.message : 'Could not build module index.');
-    } finally { setInsightsLoading(false); }
+      if (requestId === insightsRequestId.current)
+        setInsightsError(err instanceof Error ? err.message : 'Could not build module index.');
+    } finally {
+      if (requestId === insightsRequestId.current) setInsightsLoading(false);
+    }
   }, [result, versionOverride]);
+
+  useEffect(() => {
+    if (workspaceMode === 'insights' && result && !insights && !insightsLoading && !insightsError) {
+      void loadInsights();
+    }
+  }, [workspaceMode, result, insights, insightsLoading, insightsError, loadInsights]);
 
   const tree = useMemo(() => result ? filterTree(result.root, filters) : null, [result, filters]);
   const index = useMemo(() => tree ? indexNodes(tree) : new Map<string, FileNode>(), [tree]);
@@ -373,7 +451,7 @@ export default function App() {
   return <div className="app-shell">
     <header className="global-header">
       <div className="brand"><div className="brand-icon"><Layers3 size={21}/></div><div><strong>Odoo Module Explorer</strong><span>CODE STRUCTURE ANALYZER</span></div></div>
-      <div className="header-actions"><span className="phase-tag"><span className="live-dot"/> PHASE 07 · INSIGHTS</span><a className="github-link" href="https://github.com/Gadero5565/odoo-module-explorer" target="_blank" rel="noopener noreferrer" title="Project GitHub repository"><Github size={18}/><span>GitHub</span></a></div>
+      <div className="header-actions"><span className="phase-tag"><span className="live-dot"/> PHASE 08 · LIVE REFRESH</span><a className="github-link" href="https://github.com/Gadero5565/odoo-module-explorer" target="_blank" rel="noopener noreferrer" title="Project GitHub repository"><Github size={18}/><span>GitHub</span></a></div>
     </header>
 
     <section className="input-bar">
@@ -395,11 +473,18 @@ export default function App() {
       <div className="feature-row"><span><CheckCircle2 size={15}/> No Odoo server required</span><span><CheckCircle2 size={15}/> Works offline</span><span><CheckCircle2 size={15}/> Read-only analysis</span></div>
       <div className="welcome-hint">The path is read by FastAPI on your computer, not by the browser. {demoPath ? 'Or try the bundled sample addon.' : 'Start the backend to enable the sample addon.'}</div>
     </div> : <div className="workspace">
-      <div className="summary-strip"><div className="module-identity"><span className="module-ident-icon"><Database size={21}/></span><div><h2>{result.module.name}</h2><div className="module-meta"><span>{result.module.version ? `Odoo ${result.module.version}` : 'Odoo version unspecified'}</span><span className="mid-dot">·</span><span title={result.module.absolute_path}>{result.module.absolute_path}</span></div></div></div><button className="refresh-button" onClick={() => void runAnalysis(result.module.absolute_path)} disabled={loading} title="Rescan source files"><RefreshCcw size={16} className={loading ? 'spin' : ''}/> Rescan</button></div>
+      <div className="summary-strip"><div className="module-identity"><span className="module-ident-icon"><Database size={21}/></span><div><h2>{result.module.name}</h2><div className="module-meta"><span>{result.module.version ? `Odoo ${result.module.version}` : 'Odoo version unspecified'}</span><span className="mid-dot">·</span><span title={result.module.absolute_path}>{result.module.absolute_path}</span></div></div></div><div className="refresh-controls">
+        <label className="auto-refresh-label" title="Check for local file changes every 4 seconds">
+          <input type="checkbox" checked={autoRefresh} onChange={e => setAutoRefresh(e.target.checked)}/>
+          <span>Auto refresh</span>
+        </label>
+        <span className="refresh-status" role="status" title={changedPaths.join(', ') || 'Filesystem scan status'}>{syncMessage}</span>
+        <button className="refresh-button" onClick={() => void refreshModule(undefined, true)} disabled={loading || manualRefreshing} title="Check for changes now"><RefreshCcw size={16} className={manualRefreshing ? 'spin' : ''}/> Check now</button>
+      </div></div>
       <div className="stat-strip">{statCards.map(stat => <div className="stat-item" key={stat.label}><div className="stat-icon"><stat.icon size={19}/></div><div><div className="stat-label">{stat.label}</div><div className="stat-value">{stat.value}</div></div></div>)}</div>
       <div className="workspace-mode" role="group" aria-label="Explorer view">
         <button className={workspaceMode === 'explorer' ? 'selected' : ''} onClick={() => setWorkspaceMode('explorer')}><Layers3 size={15}/> File Explorer</button>
-        <button className={workspaceMode === 'insights' ? 'selected' : ''} onClick={() => { setWorkspaceMode('insights'); if (!insights && !insightsLoading) void loadInsights(); }}><GitBranch size={15}/> Advanced Insights</button>
+        <button className={workspaceMode === 'insights' ? 'selected' : ''} onClick={() => setWorkspaceMode('insights')}><GitBranch size={15}/> Advanced Insights</button>
       </div>
       {workspaceMode === 'insights' ? <InsightsPanel data={insights} loading={insightsLoading} error={insightsError} onLoad={() => void loadInsights()} onJump={jumpToInsight}/> : <div className="workbody">
         <aside className="file-sidebar">
@@ -425,11 +510,11 @@ export default function App() {
           <div className="rank-panel"><div className="rank-header"><strong>LARGEST ITEMS</strong><span>IN CURRENT {viewingStructure ? 'SOURCE SCOPE' : 'DIRECTORY'}</span></div>{(!viewingStructure || !!pythonInspection || !!xmlInspection || !!jsInspection || !!styleInspection) && displayedNode?.children.length ? [...displayedNode.children].sort((a, b) => metricValue(b, effectiveMetric) - metricValue(a, effectiveMetric) || a.name.localeCompare(b.name)).slice(0, 15).map((node, rowIndex) => <button className={`rank-row ${displayedSelection?.id === node.id ? 'rank-selected' : ''}`} key={node.id} onClick={() => onVisualSelect(node)}><span className="rank-index">{String(rowIndex + 1).padStart(2, '0')}</span>{node.kind === 'directory' ? <Folder size={17} className="rank-folder"/> : <FileCode2 size={16}/>}<span className="rank-name truncate">{node.name}</span><span className="rank-meta">{node.kind === 'directory' ? `${formatNumber(node.file_count)} files` : node.kind === 'file' ? ('extension' in node ? node.extension || 'FILE' : 'tag' in node ? 'XML' : 'metadata' in node ? (viewingStyles ? 'STYLES' : 'JS') : 'PYTHON') : node.kind.replaceAll('_',' ')}</span><strong>{effectiveMetric === 'size_bytes' ? formatBytes(node.size_bytes) : formatNumber(metricValue(node, effectiveMetric))}</strong><ChevronRight size={15}/></button>) : <div className="rank-empty">No definitions in this scope.</div>}</div>
         </main>
 
-        <aside className="details-sidebar"><div className="details-top"><span>INSPECTOR</span><span className="inspector-tag">PHASE 7</span></div>{selectedStyle ? <StyleDetails node={selectedStyle} inspection={styleInspection} modulePath={result.module.absolute_path} onSelect={onStyleSymbolSelect}/> : selectedJS ? <JSDetails node={selectedJS} inspection={jsInspection} modulePath={result.module.absolute_path} onSelect={onJSSymbolSelect}/> : selectedXML ? <XMLDetails node={selectedXML} modulePath={result.module.absolute_path} onSelect={onXMLSymbolSelect}/> : selectedPython ? <PythonDetails node={selectedPython} modulePath={result.module.absolute_path} onSelect={onSymbolSelect}/> : selectedNode && <DetailsPanel node={selectedNode} modulePath={result.module.absolute_path} onSelect={onSelect}/>}</aside>
+        <aside className="details-sidebar"><div className="details-top"><span>INSPECTOR</span><span className="inspector-tag">PHASE 8</span></div>{selectedStyle ? <StyleDetails node={selectedStyle} inspection={styleInspection} modulePath={result.module.absolute_path} onSelect={onStyleSymbolSelect}/> : selectedJS ? <JSDetails node={selectedJS} inspection={jsInspection} modulePath={result.module.absolute_path} onSelect={onJSSymbolSelect}/> : selectedXML ? <XMLDetails node={selectedXML} modulePath={result.module.absolute_path} onSelect={onXMLSymbolSelect}/> : selectedPython ? <PythonDetails node={selectedPython} modulePath={result.module.absolute_path} onSelect={onSymbolSelect}/> : selectedNode && <DetailsPanel node={selectedNode} modulePath={result.module.absolute_path} onSelect={onSelect}/>}</aside>
       </div>
       }
       {result.warnings.length > 0 && <div className="warnings-strip"><AlertCircle size={15}/>{result.warnings.length} scanning warning(s), e.g. {result.warnings[0].relative_path}: {result.warnings[0].reason}</div>}
-      <div className="workspace-footer"><span>Odoo Module Explorer v0.7.0</span><span>Supports Odoo 16–19 · Static source and model insights</span></div>
+      <div className="workspace-footer"><span>Odoo Module Explorer v0.8.0</span><span>Supports Odoo 16–19 · Static source and model insights</span></div>
     </div>}
   </div>;
 }

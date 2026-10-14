@@ -211,3 +211,10 @@ export function styleSymbolPath(root: StyleSymbol, wanted: string): StyleSymbol[
   }
   return [];
 }
+
+/** Preserve navigation after file edits, moves, or deletes. */
+export function nearestExistingId(id: string, nodes: Map<string, FileNode>): string {
+  let candidate = id;
+  while (!nodes.has(candidate) && candidate !== '.') candidate = parentId(candidate);
+  return nodes.has(candidate) ? candidate : '.';
+}

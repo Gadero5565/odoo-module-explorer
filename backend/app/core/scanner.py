@@ -53,8 +53,10 @@ def _line_count(path: Path) -> int:
 
 
 class DirectoryScanner:
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, line_counter=None):
         self.root = root
+        self.line_counter = line_counter or (lambda path, stat: _line_count(path))
+        self.fingerprints: dict[str, tuple[int, ...]] = {}
         self.warnings: list[ScanWarning] = []
         self.ignored_entries = 0
         self.seen_entries = 0
@@ -77,6 +79,7 @@ class DirectoryScanner:
             id=relative_path or ".", name=path.name,
             relative_path=relative_path, kind="directory"
         )
+        self.fingerprints[relative_path or "."] = (-1,)
         try:
             with os.scandir(path) as iterator:
                 entries = sorted(iterator, key=lambda entry: entry.name.casefold())
@@ -106,8 +109,13 @@ class DirectoryScanner:
                     if self.seen_entries > MAX_ENTRIES:
                         raise AnalysisError(f"Module exceeds {MAX_ENTRIES:,} scanned entries.")
                     ext = Path(entry.name).suffix.lower()
-                    stat = entry.stat(follow_symlinks=False)
-                    lines = _line_count(Path(entry.path)) if ext in SOURCE_EXTENSIONS else 0
+                    # os.DirEntry.stat() has zero st_ino/st_dev on Windows. Cache lookups
+                    # use Path.stat() (os.stat), so fingerprints must use that
+                    # same source to avoid persistent cache misses.
+                    stat = os.stat(entry.path, follow_symlinks=False)
+                    self.fingerprints[rel] = (stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns,
+                                              getattr(stat, "st_dev", 0), getattr(stat, "st_ino", 0))
+                    lines = self.line_counter(Path(entry.path), stat) if ext in SOURCE_EXTENSIONS else 0
                     child = FileNode(
                         id=rel, name=entry.name, relative_path=rel, kind="file",
                         extension=ext or None, size_bytes=stat.st_size, file_count=1,

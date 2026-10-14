@@ -167,3 +167,12 @@ a { color: inherit; text-decoration: none; }
 .insight-empty p { font-size: 12px; color: #94b1ce; line-height: 1.7; max-width: 570px; }
 .insight-message { display: flex; gap: 10px; align-items: center; color: #9bc3ed; padding: 20px 0; font-size: 12px; }
 @media (max-width: 690px) { .insights-panel { padding: 18px 13px; }.insight-heading { flex-wrap: wrap; }.insight-model-groups { grid-template-columns: 1fr; }.insight-symbol-kind { flex-basis: 65px; }.insight-metric { flex-basis: 65px; }.insight-result { gap: 7px; padding: 10px 8px; } }
+
+/* Phase 8 – unobtrusive, responsive auto-refresh status */
+.refresh-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.auto-refresh-label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  font-size: 12px; color: var(--text-muted, #99acc3); white-space: nowrap; }
+.auto-refresh-label input { accent-color: #4cacef; width: 15px; height: 15px; }
+.refresh-status { color: var(--text-muted, #99acc3); font-size: 11px; max-width: 250px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 900px) { .refresh-status { display: none; } }

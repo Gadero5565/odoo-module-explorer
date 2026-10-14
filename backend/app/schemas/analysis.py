@@ -41,6 +41,7 @@ class ModuleDetails(BaseModel):
 class AnalysisResult(BaseModel):
     module: ModuleDetails
     root: FileNode
+    revision: str = ""
     warnings: list[ScanWarning] = Field(default_factory=list)
     ignored_entries: int = 0
 
@@ -48,3 +49,15 @@ class AnalysisResult(BaseModel):
 class ConfigResponse(BaseModel):
     demo_module_path: str
     supported_versions: list[str]
+
+
+class RefreshRequest(AnalyzeRequest):
+    previous_revision: str = Field(default="", max_length=64)
+
+
+class RefreshResult(BaseModel):
+    changed: bool
+    revision: str
+    changed_paths: list[str] = Field(default_factory=list)
+    paths_truncated: bool = False
+    analysis: AnalysisResult | None = None
