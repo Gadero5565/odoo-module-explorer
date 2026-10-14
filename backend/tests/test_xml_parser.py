@@ -1,4 +1,4 @@
-"""Phase 4: exact spans, semantics, error isolation, safe XML parsing and endpoint."""
+"""XML parser: exact spans, semantics, error isolation, safe XML parsing and endpoint."""
 
 from pathlib import Path
 

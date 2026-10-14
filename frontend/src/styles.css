@@ -95,10 +95,10 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 760px) { .global-header { padding: 0 14px; }.brand strong { font-size: 14px; }.phase-tag { display: none; }.input-bar { padding: 12px; }.input-container { flex-wrap: wrap; }.path-input-wrap { flex: 1 1 100%; }.input-container select { flex: 1; }.primary-button { flex: 1; }.summary-strip { padding: 15px 12px; }.stat-strip { grid-template-columns: repeat(2,1fr); padding: 0 12px 12px; }.workbody { display: block; }.file-sidebar { min-height: 150px; max-height: 290px; border-right: 0; border-bottom: 1px solid #29394e; }.sidebar-scroll { min-height: 100px; }.main-panel { padding: 0 12px 20px; }.explorer-toolbar { flex-wrap: wrap; padding: 11px 0; gap: 10px; }.view-heading { align-items: flex-start; }.view-tally { display: none; }.treemap-container { height: 340px; }.details-scroll { display: block; }.detail-section { margin-bottom: 25px; }.workspace-footer { padding: 15px 12px; gap: 12px; }.workspace-footer span:last-child { text-align: right; } }
 @media (max-width: 440px) { .stat-item { padding: 11px; }.stat-value { font-size: 17px; }.stat-icon { width: 30px; height: 30px; }.rank-meta { display: none; }.rank-row strong { width: 65px; }.github-link span { display: none; }.metric-group button { padding: 7px; }.welcome-container h1 { letter-spacing: -1.6px; } }
 
-/* Phase 2: static Python symbols */
+/* Source structure and insights */
 .symbol-decorator { font: 11px/1.7 'Cascadia Code', Consolas, monospace; padding: 7px 9px; margin: 4px 0; border-radius: 6px; border: 1px solid #334762; background: #15263a; color: #93c4fc; overflow-wrap: anywhere; }
 
-/* Phase 3 — Odoo-aware metadata */
+/* Source structure and insights */
 .odoo-type-summary { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 12px; }
 .odoo-chip { display: inline-block; color: #9fe2d6; border: 1px solid #35665f; background: #15332f; border-radius: 5px; padding: 5px 7px; font: 10px 'Cascadia Code', Consolas, monospace; }
 .odoo-route { padding: 9px 10px; border: 1px solid #344a63; border-radius: 7px; background: #14263a; margin-top: 9px; }
@@ -108,7 +108,7 @@ a { color: inherit; text-decoration: none; }
 /* XML metadata can contain long XPath expressions and dotted identifiers. */
 .detail-stat strong { min-width: 0; overflow-wrap: anywhere; }
 
-/* Phase 7 — module-wide symbol index, model relationships and ranking insights */
+/* Source structure and insights */
 .workspace-mode { display: flex; gap: 5px; background: #0d1725; border-bottom: 1px solid #29394e; padding: 9px 25px; }
 .workspace-mode button { display: flex; gap: 9px; align-items: center; border: 1px solid transparent; padding: 10px 16px; border-radius: 7px; background: transparent; color: #879eb8; font-size: 12px; font-weight: 700; }
 .workspace-mode button.selected { background: #1d3a5a; color: #cae6ff; border-color: #37628c; }
@@ -168,7 +168,7 @@ a { color: inherit; text-decoration: none; }
 .insight-message { display: flex; gap: 10px; align-items: center; color: #9bc3ed; padding: 20px 0; font-size: 12px; }
 @media (max-width: 690px) { .insights-panel { padding: 18px 13px; }.insight-heading { flex-wrap: wrap; }.insight-model-groups { grid-template-columns: 1fr; }.insight-symbol-kind { flex-basis: 65px; }.insight-metric { flex-basis: 65px; }.insight-result { gap: 7px; padding: 10px 8px; } }
 
-/* Phase 8 – unobtrusive, responsive auto-refresh status */
+/* Source structure and insights */
 .refresh-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .auto-refresh-label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
   font-size: 12px; color: var(--text-muted, #99acc3); white-space: nowrap; }
@@ -176,3 +176,10 @@ a { color: inherit; text-decoration: none; }
 .refresh-status { color: var(--text-muted, #99acc3); font-size: 11px; max-width: 250px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 900px) { .refresh-status { display: none; } }
+
+/* Python source visibility — applies only to the current source scope */
+.filter-divider { border-top: 1px solid #33465c; margin: 10px 0 9px; }
+.python-filter-summary { display: flex; align-items: center; gap: 12px; justify-content: space-between; flex-wrap: wrap; border: 1px solid #253c53; border-radius: 7px; background: #102034; color: #a9c2dd; font-size: 11px; padding: 8px 11px; margin: 1px 0 9px; }
+.python-filter-summary strong { color: #e5f2ff; }
+.python-filter-summary button { background: none; color: #7bbaff; border: 0; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; }
+.python-filter-summary button:hover { color: #c3e4ff; }

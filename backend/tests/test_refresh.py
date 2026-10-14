@@ -1,4 +1,4 @@
-"""Phase 8: revision correctness, incremental parses, caching, limits, safety."""
+"""Refresh tests: revision correctness, incremental parses, caching, limits, safety."""
 
 import os
 from concurrent.futures import ThreadPoolExecutor

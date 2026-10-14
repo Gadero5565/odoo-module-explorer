@@ -1,4 +1,4 @@
-"""Phase 2 AST parser: source bytes, nesting, decorators and resilience."""
+"""AST parser: source bytes, nesting, decorators and resilience."""
 
 from app.parsers.python_parser import inspect_python_source
 
@@ -7,7 +7,7 @@ SOURCE = '''from odoo import models, fields
 
 @api.model
 class Planner(models.Model):
-    name = fields.Char()  # field declarations are other code in Phase 2
+    name = fields.Char()  # field declarations are residual source in the general AST parser
 
     @api.depends("name")
     def _compute_title(self):

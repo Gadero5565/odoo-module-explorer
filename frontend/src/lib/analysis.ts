@@ -113,6 +113,46 @@ export function nodeColor(node: FileNode | PythonSymbol | XMLSymbol | JSSymbol |
   return categoryColor(fileCategory('extension' in node ? node.extension : '.py'));
 }
 
+/** View-only options: never remove symbols from the parsed source or global index. */
+export type PythonVisibility = { showFields: boolean; showOtherCode: boolean };
+export const DEFAULT_PYTHON_VISIBILITY: PythonVisibility = { showFields: false, showOtherCode: false };
+
+/** Filter Python symbols recursively, preserving IDs, source ranges, and physical metrics. */
+export function filterPythonSymbols(root: PythonSymbol, options: PythonVisibility): PythonSymbol {
+  const visible = (item: PythonSymbol): boolean =>
+    (options.showFields || item.kind !== 'odoo_field') &&
+    (options.showOtherCode || item.kind !== 'code');
+  return {
+    ...root,
+    children: root.children.filter(visible).map(child => filterPythonSymbols(child, options)),
+  };
+}
+
+/** When a selected symbol becomes hidden, stay at its nearest visible parent. */
+export function nearestVisiblePythonId(original: PythonSymbol, visibleIds: Map<string, PythonSymbol>, id: string | null): string {
+  if (!id) return original.id;
+  const route = pythonSymbolPath(original, id);
+  for (let i = route.length - 1; i >= 0; i--) {
+    if (visibleIds.has(route[i].id)) return route[i].id;
+  }
+  return original.id;
+}
+
+/** Area and count occupied by direct visible entries in the current source scope. */
+export function pythonScopeMetrics(original: PythonSymbol, visible: PythonSymbol) {
+  const visibleBytes = visible.children.reduce((sum, node) => sum + node.size_bytes, 0);
+  const visibleLines = visible.children.reduce((sum, node) => sum + node.line_count, 0);
+  return {
+    visibleCount: visible.children.length,
+    hiddenCount: original.children.length - visible.children.length,
+    visibleBytes,
+    hiddenBytes: Math.max(0, original.size_bytes - visibleBytes),
+    visibleLines,
+    totalBytes: original.size_bytes,
+    totalLines: original.line_count,
+  };
+}
+
 export function indexPythonSymbols(root: PythonSymbol): Map<string, PythonSymbol> {
   const index = new Map<string, PythonSymbol>();
   const stack = [root];

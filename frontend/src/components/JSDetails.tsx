@@ -80,6 +80,6 @@ export default function JSDetails({ node, inspection, modulePath, onSelect }: Pr
       {definitions.slice(0, 100).map(child => <button key={child.id} className="largest-item" onClick={() => onSelect(child)}><span className="truncate">{child.name}</span><span>{child.kind === 'property' ? <Tags size={12}/> : child.kind}</span></button>)}
       {definitions.length > 100 && <p className="semantic-note">Showing the first 100 child definitions.</p>}
     </div>}
-    <div className="detail-note"><Layers3 size={15}/><span>Static Odoo 16–19 JavaScript analysis. It never executes source files. OWL template names, imported modules and registry references are not resolved across files in Phase 5. Residual source rectangles preserve physical byte totals.</span></div>
+    <div className="detail-note"><Layers3 size={15}/><span>Static Odoo 16–19 JavaScript analysis. It never executes source files. OWL template names, imported modules and registry references are not fully resolved across files. Residual source rectangles preserve physical byte totals.</span></div>
   </div>;
 }

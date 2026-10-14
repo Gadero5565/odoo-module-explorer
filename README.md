@@ -1,85 +1,36 @@
-# Phase 9 — Standalone release candidate (v0.1.0)
-
-**Status:** Source implementation complete; Windows release build and installed-wheel smoke tests must pass before tagging. No Odoo server is needed. Supports Odoo 16–19.
-
-## Quick start for developers (existing checkout)
-
-The two-terminal development workflow remains unchanged: `cd backend && pip install -e ".[dev]" && uvicorn app.main:app --reload --port 7764`, and in a second terminal `cd frontend && npm install && npm run dev`.
-
-To launch from a **single terminal** after building the UI once:
-
-```powershell
-cd frontend
-npm install          # creates/updates package-lock.json if necessary
-npm run build
-cd ..
-python -m pip install -e .\backend
-odoo-explorer "C:\path\to\your\odoo19_addon"
-```
-
-Open `http://127.0.0.1:7764`. The CLI opens a browser by default; `--no-browser` disables it, `--port 17764` changes the port and `--version` shows the installed version. The addon argument is optional and prepopulates the path field; click **Analyze**. The CLI intentionally binds to loopback only.
-
-## Build the distributable wheel (Windows)
-
-Requires Python **3.10–3.13**, Node.js **20+**, npm, and pip plus `setuptools` and `wheel` in the build environment.
-
-```powershell
-python -m pip install --upgrade setuptools wheel
-.\scripts\build_release.ps1
-# or: python scripts/build_release.py
-.\scripts\install_release.ps1 -Version 3.10
-.\release-venv\Scripts\odoo-explorer.exe --version
-.\release-venv\Scripts\odoo-explorer.exe "C:\path\to\your\odoo19_addon"
-```
-
-The build generates `release/odoo_module_explorer_backend-0.1.0-py3-none-any.whl`, and bundles the production React UI, TypeScript parser grammar (with its license), and demo Odoo addon. Install that wheel into a clean virtualenv to test the real release rather than relying on the source tree. Python dependencies install via pip; **Node.js remains required for JavaScript/OWL inspection**, but neither npm nor frontend/node_modules is needed after installing the wheel.
-
-For a build where npm dependencies are already installed and frontend/dist already exists, run `python scripts/build_release.py --skip-npm`. Bundled/generated assets are excluded from Git. To check the CI pipeline, see `.github/workflows/release-wheel.yml` (manual dispatch or `v*` tags); it uploads the wheel as a workflow artifact and does not publish to PyPI. Do not create a release tag until the Windows and CI checks pass.
-
-### Important security and scope notes
-
-- All analysis is read-only and offline after installation. The analyzer runs locally and binds only `127.0.0.1`; it does not import or execute the selected addon.
-- Port must be 1024–65535; `7764` is the default.
-- TypeScript grammar is bundled in release wheels, but the Node executable is an external prerequisite for `.js` inspection.
-- Source checkouts without `frontend/dist` still support the original two-terminal dev workflow. The standalone CLI requires a built web UI and provides a helpful error when it is missing.
-
----
-
 # Odoo Module Explorer
 
-A local, **read-only** explorer for Odoo addons (Odoo **16, 17, 18, 19**). Python / FastAPI backend and React / TypeScript / Apache ECharts frontend.
+A **local, read-only source explorer** for Odoo 16, 17, 18 and 19 addons. Visualize where code lives, inspect implementation details, and navigate relationships without installing or running Odoo.
 
-**Phase 1 (accepted):** Treemap for folders/files, byte sizes, file counts, physical source lines, filters, ranked items, search, and breadcrumbs.
+**Repository:** https://github.com/Gadero5565/odoo-module-explorer
 
-**Phase 2 (accepted):** Click a `.py` file to inspect its **classes, functions, methods, nested functions, async definitions, decorators, function parameter names, line ranges, and physical source sizes**. All symbol trees are produced by Python `ast` without running any addon code. Classes and functions drill down just like directories; breadcrumbs navigate back up. Phase 2 source-size partitioning remains intact.
+## Features
 
-**Phase 3 (accepted):** AST-only Odoo 16–19 model and controller semantics. Classes expose model kinds (`Model`, `TransientModel`, `AbstractModel`, `Controller`), literal `_name` / `_inherit` / `_inherits` / `_description`, counts of direct field declarations, and categorized methods. Odoo fields are individually clickable treemap nodes showing their types, relations, compute/inverse/search/related metadata and literal boolean attributes. Methods show computed-field dependencies, onchange/constraint fields, CRUD overrides, and HTTP route metadata. The analyzer remains read-only and **does not import or run Odoo**.
+- **Interactive treemap:** explore addons by directory, file, class, method and source element; sort by source bytes, physical lines or file count where applicable.
+- **Python and Odoo models:** class and function structure, inheritance, fields, decorators, computed methods, HTTP routes and ORM method roles.
+- **Python visibility controls:** field declarations and residual “Other code / declarations” are hidden in the treemap by default. Enable each category independently from **Display filters**. Visible scope counts, chart areas and rankings update; physical file size and module-wide totals remain unchanged.
+- **XML and QWeb:** Odoo records, view declarations, XPath, actions, menus and templates.
+- **JavaScript and OWL:** classes, methods, components, hooks, services, imports and registry registrations.
+- **SCSS and CSS:** selectors, nested rules, declarations, Sass variables and mixins.
+- **Advanced Insights:** global symbol search, logical Odoo model summaries, reference graphs and approximate method complexity rankings.
+- **Automatic refresh:** checks local files approximately every four seconds, reuses cached parse results and updates the explorer on changes.
+- **Standalone mode:** install a bundled wheel and launch with one `odoo-explorer` command.
 
-**Phase 4 (accepted):** Click any `.xml` file to explore its element hierarchy in the same treemap. Detects Odoo `record` definitions, views (`ir.ui.view`, target model, `inherit_id`, view type), actions, menus, field references, XPath expressions and positions, plus QWeb/OWL `t-name`, `t-inherit`, `t-inherit-mode`, `t-call`, and template attributes. Each node includes source line references, exact byte size and an inspector. Malformed XML is isolated to the selected file. **No Odoo or JavaScript is executed; DTD/entity declarations and network access are blocked.**
-
-**Phase 5 (accepted):** Click any `.js` source to inspect JavaScript classes, methods, functions, async/arrow functions, `@odoo-module` imports, OWL component template references, hooks, registry entries, and service dependencies. Phase 5 uses TypeScript's JavaScript parser through a read-only Node.js subprocess; addon code is **never executed**. JavaScript file and nested symbol treemaps have exact additive source-byte sizes, with residual code shown as separate rectangles. The parser reads one `.js` source file lazily, when you select it.
-
-**Phase 6 (accepted):** Click any `.scss` or `.css` file to inspect its nested selectors, ordinary declarations, Sass variables, mixins, functions, includes, CSS at-rules, keyframes, imports/use/forward references, and source line locations. The parser is self-contained Python and never compiles SCSS, executes scripts, or resolves imported files. It handles comments, strings, nested rules, interpolation, UTF-8 and CRLF, and shows residual source rectangles to preserve exact physical bytes. Malformed stylesheets show an inspection warning while preserving file-level totals.
-
-**Phase 7 (accepted):** Open **Advanced Insights** after analyzing an addon. A bounded on-demand index searches symbols across Python, XML/QWeb, JavaScript/OWL and SCSS/CSS. Explore logical Odoo model identities (`_name` and `_inherit`), member fields/methods, XML views/actions, and literal relationship edges with an interactive graph. External model references are explicitly marked as unresolved by this addon. Rank source symbols by bytes, physical lines or **approximate Python method complexity**. Click search results, model members or ranking rows to return to the matching source symbol in the existing file treemap. Indexing remains read-only, in-memory and does not launch Odoo. Index limits produce visible partial-results warnings rather than silently implying completeness.
-
-**Phase 8 (accepted):** Adds **automatic 4-second refresh** (toggleable) and a manual **Check now** button. File additions, deletions, renames and edits refresh the existing treemap and totals while retaining the closest valid folder position; inspected files and Advanced Insights are refreshed or invalidated safely. Source lines and parser outputs are cached **in memory only**, with signature-based invalidation and bounded LRU limits. The module-wide insights result is cached by revision, while changes reassemble the logical index from unchanged cached parses. Detects same-size edits using nanosecond mtime, ctime, device and inode metadata, and recovers from backend restarts or expired snapshots. Caches do not execute analyzed code. See `scripts/benchmark_refresh.py` for reproducible synthetic measurements.
+The interface is **local-only** and scans the module directory you supply. It does not execute addon Python or JavaScript, run Odoo, read an Odoo database, or upload source files to a cloud service.
 
 ## Requirements
 
-- Python **3.10+** with pip (backend tests verified on Python 3.13; CI targets 3.10–3.13)
-- Node.js **20.19+ or 22.12+** (required for JS inspection). npm is needed for source frontend development and wheel builds, but not after installing a bundled wheel
-- Windows 10/11; Linux/macOS using equivalent shell commands
-- A real addon containing `__manifest__.py` and `__init__.py`, or the included sample addon
-- **No running Odoo server or database required**
+- Python **3.10 or newer** (the project targets Python 3.10–3.13).
+- Node.js **20.19+ or 22.12+** and npm to build the frontend.
+- Node.js at runtime **only** for JavaScript/OWL inspection. Python, XML and stylesheet inspection do not use Node.
+- Windows, Linux or macOS. Windows PowerShell examples follow; other platforms can use the equivalent shell commands.
 
-## Run locally on Windows (PowerShell)
+## Quick start (source checkout)
 
-Unzip, open two terminals in the project folder. If you already installed Phase 1, you can keep the existing `.venv` and skip its creation. Copy only the new source project files over your old project, leaving `node_modules` and `.venv` untouched.
-
-**Terminal 1 — Backend:**
+Clone the repository and start from its root:
 
 ```powershell
+# Terminal 1: backend
 cd backend
 py -3.10 -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -87,148 +38,80 @@ python -m pip install -e ".[dev]"
 python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 7764
 ```
 
-If PowerShell blocks activation, run `.\.venv\Scripts\python.exe -m pip install -e ".[dev]"` and `.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 7764` without activating.
-
-**Terminal 2 — Frontend:**
-
 ```powershell
+# Terminal 2: frontend (from repository root)
 cd frontend
 npm install
 npm run dev
 ```
 
-Go to **http://127.0.0.1:5173**. Enter the absolute addon path or click **Explore sample module**.
+Navigate to **http://127.0.0.1:5173** and enter the path of a local addon, for example:
 
-- Click a **folder** to show its children (Phase 1).
-- Click any **Python file** in the explorer, treemap, or rank list. The UI requests the Python structure lazily, only for the selected file.
-- Click a **class** to show its methods and, when it is an Odoo model, its **field declarations**; click a **field** to inspect its type, comodel, compute/default details, and literal attributes.
-- Select a **method** to see detected compute/onchange/constraint/action/ORM roles; select the bundled `controllers/preview.py` to inspect a controller route.
-- The synthetic gray **Other code / declarations** region represents imports, model metadata assignments and miscellaneous statements outside child definitions and recognized field declarations. It ensures child byte and line totals exactly partition the parent.
-- Use breadcrumbs to return to any parent scope. When exploring Python symbols, the **Files** metric is hidden because file count is not a meaningful symbol-level measurement.
-- Click an **XML file** (`views/*.xml`, `data/*.xml`, or `static/src/**/*.xml`) to explore elements and records; navigate from `<odoo>` and `<data>` down to views, XML fields, XPath expressions and QWeb templates. Click any node to inspect its attributes and source location. This is source-level visualization, not a resolved Odoo view inheritance graph.
-- **Auto refresh** (enabled by default) checks for local file changes every 4 seconds. The backend returns only a small status response when nothing changed; when a file changes, the treemap and open inspector update without losing your folder navigation. If the selected file was deleted, the inspector closes and navigation falls back to its parent folder.
-- **Check now** performs an immediate refresh without resetting the UI. Disable the auto-refresh checkbox to stop polling. A backend restart or expired revision snapshot triggers a full UI update on the next successful check.
-- Click any **JavaScript file** (`static/src/**/*.js`) to explore OWL components, `static template`, `setup()` hooks, nested functions, service definitions and registry `category(...).add(...)` calls. The file inspector lists imports and registrations. Click a class or service to drill into methods.
+```text
+C:\odoo\custom_addons\my_addon
+```
 
-- Click a **SCSS or CSS file** to inspect selectors, declarations, variables, mixins, functions, includes, media queries, keyframes, and imported stylesheet references. The inspector shows details for any selected node. CSS/SCSS source bytes are partitioned across recognized nodes and gray "Other source / comments" rectangles.
-- Click **Advanced Insights** to build a module-wide index. Search for any named class/method/field, select an Odoo model to inspect its local class extensions, fields, methods, views and actions, open the Relationships tab to view its static graph, or rank symbols by bytes, lines and estimated Python complexity. Click a result to return to its original source node. Changing source invalidates the index automatically; the visible Insights panel rebuilds it. You can also rebuild it manually.
+Choose **Explore sample module** to try the bundled synthetic example.
 
-## Production-like single-server run
+## Build and run the standalone application
 
-After npm installation, in `frontend/` run `npm run build`. Start FastAPI on `127.0.0.1:7764` and open **http://127.0.0.1:7764**. The backend serves the built React app if `frontend/dist/` exists.
+From the repository root:
+
+```powershell
+python -m pip install --upgrade setuptools wheel
+python scripts/build_release.py
+.\scripts\install_release.ps1 -Version 3.10
+.\.release-venv\Scripts\odoo-explorer.exe "C:\odoo\custom_addons\my_addon"
+```
+
+The installed app opens at **http://127.0.0.1:7764**, with no separate frontend dev server. Options include `--no-browser`, `--port 17764`, and `--version`.
+
+See [docs/RELEASING.md](docs/RELEASING.md) for build verification and distribution details.
+
+## Using the Python treemap filters
+
+While viewing a Python file, class or method, open **Display filters** (the sliders icon):
+
+| Option | Initial state | Effect |
+| --- | --- | --- |
+| Show Odoo field declarations | Off | Displays individual `fields.*` declarations in the treemap, rankings and member list. |
+| Show other code / declarations | Off | Displays synthetic residual source sections (imports, unmatched declarations, method body lines outside nested definitions). |
+
+The count and size shown for the **current treemap scope** reflect the visible nodes. Hidden source is not deleted or ignored by the analyzer. Class/file inspector physical sizes and the four top-level module statistics continue to describe the complete scanned source. The Advanced Insights index retains all symbols, including those hidden in the treemap.
 
 ## Tests
 
 ```powershell
-cd backend
-.\.venv\Scripts\python.exe -m pytest tests -q
-.\.venv\Scripts\python.exe -m ruff check app tests
-```
+# From backend/
+python -m pytest -q
 
-```powershell
-cd frontend
+# From frontend/
 npm test
 npm run build
 ```
 
-**API endpoints:**
+A synthetic sample addon is included at `samples/demo_odoo_module/`. No real company addon or proprietary source is bundled.
 
-- `GET /api/health` — backend status
-- `GET /api/config` — bundled sample path and allowed Odoo versions
-- `POST /api/analyze` — `{"module_path": "C:\\...\\addon", "version_override": null}`; returns a stable `revision`
-- `POST /api/python/inspect` — `{"module_path": "C:\\...\\addon", "relative_path": "models/calendar_edition.py", "version_override": null}`
-- `POST /api/javascript/inspect` — `{ "module_path": "C:\\...\\addon", "relative_path": "static/src/components/calendar_widget/calendar_widget.js", "version_override": null }`
-- `POST /api/styles/inspect` — `{ "module_path": "C:\\...\\addon", "relative_path": "static/src/components/calendar_widget/calendar_widget.scss", "version_override": null }`
-- `POST /api/insights` — `{"module_path": "C:\\...\\addon", "version_override": null}`; bounded module-wide symbol and model reference index
-- `POST /api/refresh` — `{ "module_path": "C:\\...\\addon", "previous_revision": "<64-character revision>" }`; returns `changed`, `revision`, `changed_paths` and `analysis` only when changed
-- `GET /api/cache/stats` — aggregate cache counters; does not return file paths or source text
-- `POST /api/xml/inspect` — `{"module_path": "C:\\...\\addon", "relative_path": "views/calendar_extended.xml", "version_override": null}`
+## Security and limitations
 
-Swagger: **http://127.0.0.1:7764/docs**.
+- The server binds to `127.0.0.1`; **do not expose it to a public interface**.
+- All findings are static. Dynamic field creation, the final Odoo model registry, full cross-addon resolution and compiled web asset sizes may require a running Odoo environment and are not claimed here.
+- Approximate complexity is a source heuristic, not a complete runtime code quality assessment.
+- Parser limits, ignored directories, and warnings can lead to partial analysis; check UI warnings before drawing conclusions.
+- The source code is provided for local analysis; review permissions and privacy policies before using it with confidential company code.
 
-## Phase 8 performance and reliability
+## Project layout
 
-- No extra watcher dependency: the React app polls `/api/refresh` every **4 seconds**. The backend re-traverses the selected addon metadata each time but caches source line counts for unchanged files. It does not reparse every file on every poll.
-- Each file is fingerprinted by physical size, nanosecond modification/change time, device, and inode; folder additions/deletions also affect the revision. It is **metadata-based**, not a cryptographic content hash, so artificial edits preserving *all* metadata might escape detection.
-- The per-process cache is limited to **12,000 line entries, 1,024 parsed-file entries / 24 MiB raw source input, 8 revision snapshots, and 6 whole-module Insights indexes**. Parsed source models occupy additional memory. Restarting FastAPI clears all caches and is safe.
-- For module-wide Insights, **unchanged files reuse their parsed trees**. Rebuilding the model/relationship summary still requires traversing the index; it is not a fully incremental database index.
-- A source file changed while being read is retried once; malformed files still preserve filesystem totals. Error notifications do not discard the previous valid workspace.
-- Run `python scripts/benchmark_refresh.py` from the repository root with your active backend environment to benchmark a generated 400-Python-file addon. Timing varies by machine.
+```text
+backend/    FastAPI server, read-only source parsers and CLI
+frontend/   React, TypeScript, ECharts and UI tests
+samples/    Synthetic example Odoo addon
+scripts/    Developer setup, release build and benchmarking tools
+docs/       Release and developer guidance
+```
 
-## Source metrics and caveats
+See [CHANGELOG.md](CHANGELOG.md) for user-facing changes. Contributions are welcome through issues and pull requests; see [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
-- Folder/file sizes are **raw physical bytes**, not compression, compiled bundles, or runtime memory usage.
-- Python symbols use inclusive **physical line spans**, with decorator lines included. Code outside nested definitions is grouped into *Other code* rather than double-counted. These are not cyclomatic complexity, logical LOC, or statement counts.
-- Python/XML inspection has a **4 MiB per-file limit**, rejects path traversal/symlinks, and does not open file paths outside the chosen addon. Syntax errors return a warning and preserve file-level totals. Python encoding declarations and CRLF are supported.
-- Odoo model identities are inferred from **direct Odoo base classes only**, not from the runtime registry. A class extending an Odoo model using `_inherit` has no new `_name` unless explicitly declared; we show its inheritance metadata. Delegated inheritance comes from literal `_inherits` dictionaries. Unresolved/dynamic expressions remain unknown (their source expression may be displayed), not guesses.
-- Fields are detected from **direct class-level** `fields.Type(...)` assignments of known Odoo types. Dynamically generated fields, conditional class declarations and additions from other installed addons are not resolved. Python files using syntax newer than the analyzer interpreter may report syntax errors; Python 3.10 runs are supported for this phase.
-- The method role is a useful static classification **based on names and decorators**, not proof of effective Odoo behavior. HTTP route properties are recorded only when statically literal; no actual route registration is performed.
-- XML element **byte sizes partition exactly** with `Other XML / text` representing comments, whitespace and raw content not assigned to nested elements. XML element **line counts can overlap** when nested tags touch the same physical line; line-mode treemap areas are approximate and are not additive. The file-level line count remains exact.
-- XML parsing uses lxml with a strict, no-network configuration plus expat for byte offsets; external entities, DTDs and excessive nesting/element counts are rejected. The parser does not execute QWeb logic, load view inheritance from other modules, or resolve XML references against a database.
-- CSS/SCSS inspection has a **3 MiB per-file** limit, 20,000-node limit and 96-level nesting limit. CSS at-rules, nested Sass constructs and declarations are analyzed lexically (not Sass-compiled); syntactically ambiguous constructs and runtime/dynamic imports may not be resolved. The reported selectors are source selector blocks, **not** expanded compiled CSS selectors, and import references are displayed but never opened. Source **bytes** are additive; child physical line counts can overlap.
-- `.git`, caches, virtualenvs, generated distributions and symlink entries are ignored. The backend is intended to run only on your computer; keep it bound to `127.0.0.1`.
-- Phase 7's module-wide index is **built on demand**, scanning at most **500 files**, **24 MiB total read source**, and indexing at most **15,000 symbols** per request. Results report skipped files and warnings; parser failures affect individual files rather than the whole report. Unlike file-level source inspection, this index may take several seconds, particularly for many JS files because each uses a bounded Node parser subprocess. Phase 8 caches these results in memory by module revision and reuses unchanged per-file parses when rebuilding after edits.
-- The Odoo logical model explorer groups extensions of a single literal `_inherit` model name and named models into a single list. References to other addons or dynamically constructed model names cannot be fully resolved. Relations show only statically declared field comodels, inheritance and delegated inheritance; they are **not a runtime registry or full view inheritance graph**. XML model associations come from syntactic metadata. A model referenced but not defined within the addon is marked accordingly.
-- Approximate complexity is a syntax-based count of Python decision points, not an exact metric and not a treemap area or performance measurement. Code in separately defined nested functions is not attributed to outer methods. Byte and line rankings may include overlapping logical source spans from nested functions; this does not change the additive physical file treemap.
-- No network communication or analytics are used for scanning. The module's code is **never executed**.
+## Licensing
 
-## Phase 7 manual acceptance
-
-1. Using your accepted Phase 6 checkout, extract **changes-only ZIP** into the **parent folder** containing `odoo-module-explorer` and replace matching files. Keep `.git`, `.venv`, `node_modules` and your local `frontend/package-lock.json` unchanged. Restart backend and frontend.
-2. Open the sample addon; click **Advanced Insights** and let the index finish. Verify the dashboard shows `demo.calendar.edition`, `demo.calendar.day`, their Python fields and methods, XML views, CSS/SCSS selectors, and the JS registry/OWL symbols.
-3. Under **Global symbols**, search `day_count`, filter kind `odoo_field`, click the result and verify the correct Python file and field inspector are selected. Then try an XML view and JS class.
-4. Under **Odoo models**, inspect `demo.calendar.edition` and verify the declared fields, methods, linked XML views and actions. Verify external references are labeled as *referenced only* when applicable.
-5. Under **Relationships**, inspect links from edition → day and use the graph and Source buttons. Internal/external status must reflect definitions present **within this addon**, not installed Odoo modules.
-6. Under **Rankings**, switch Bytes, Lines and Complexity. Complexity should apply to Python functions/methods only. Click a ranked method and confirm the source navigation and breadcrumb behavior.
-7. Test your real `demo_odoo_module` addon and verify indexing is usable. A large or malformed file should generate a warning instead of failing the entire index. Recheck existing Phases 1–6 features and Python 3.10 compatibility.
-8. Run backend `python -m pytest -q`, frontend `npm test`, `npm run build`, and optionally GitHub Actions checks. **Do not push Phase 7 until you accept it locally**.
-
-## Phase 6 manual acceptance
-
-1. From your existing accepted Phase 5 checkout, extract the **changes-only ZIP** over the existing project root (preserve `.git`, `node_modules`, `.venv` and your `frontend/package-lock.json`). No new package dependency is introduced.
-2. Launch the sample addon, open `static/src/components/calendar_widget/calendar_widget.scss`. Verify two `$calendar-*` variables, the `calendar-padding` mixin, nested `.o_calendar_widget` and `&:hover` selectors, an `@media` node, two `@include` statements, and their source lines.
-3. Click the mixin, nested selector, and media rule; confirm children, byte sizes, selected details, and breadcrumbs. Switch Size/Lines and navigate back to the parent directory.
-4. Open `static/src/components/calendar_widget/calendar_print.css`, verify `:root`, `@media print`, `--calendar-border`, declarations and `!important` handling.
-5. Analyze real `demo_odoo_module` SCSS files (for example `calendar_designer.scss` or `calendar_regions.scss`), and verify source metrics without importing/compiling Sass.
-6. Reopen Python, XML and JavaScript nodes to ensure prior features work. Run `python -m pytest tests -q`, `npm test`, and `npm run build` locally.
-7. Invalid CSS/SCSS should report parse errors without changing file totals. Do not treat import references as resolved Odoo assets; that is outside the Phase 6 scope.
-
-## Phase 5 manual acceptance
-
-1. After updating the project, run `npm install` in `frontend/` **before** testing JS inspection. The backend uses this project's installed TypeScript parser; it is not a Python package dependency. Keep Node on your PATH.
-2. Analyze the sample addon and open `static/src/components/calendar_widget/calendar_widget.js`. Verify `CalendarWidget` is recognized as an OWL component, `demo.CalendarWidget` is shown as its template, and `setup()` shows `useState` / `onMounted`.
-3. Drill into `CalendarWidget` and click `setup` and `formatMonth`; verify exact size and source line ranges, then navigate with breadcrumbs.
-4. From the `.js` file inspector, inspect the `@odoo/owl` and `@web/core/registry` imports; click the registered action `demo.calendar_widget`.
-5. Open `static/src/services/calendar_state.js`. Check that `calendarStateService` is shown as a service and its `orm`, `notification` dependencies, `start()` method, and `calendar_state` registry entry appear.
-6. Analyze real JS in `demo_odoo_module`, including `static/src/components/calendar_designer/calendar_designer.js` and `static/src/layers/calendar_home/calendar_home.js`. Check size ranking, search, navigation, and no reported syntax errors.
-7. Verify the Python/Odoo, XML/QWeb and filesystem explorers still work. Run `python -m pytest -q`, `npm test`, and **`npm run build`** locally.
-8. JavaScript static analysis covers `.js` in Phase 5; stylesheet structure analysis is added in Phase 6. Cross-file resolution of template names/imports is Phase 7. Incomplete/dynamic registrations or templates may not be resolved. Invalid JS returns a warning and preserves file totals.
-
-## Phase 4 manual acceptance (completed)
-
-1. Launch the demo addon. Open `views/calendar_extended.xml`, drill down through `odoo → data`, and verify two views, one action, two menus and the XPath.
-2. Select `view_demo_calendar_edition_form_extend`: verify model/inheritance reference; select its `xpath` child to see expression and `position="after"`.
-3. Select `action_demo_calendar_edition` and `menu_demo_calendar_editions`: verify target model, parent menu, and action reference.
-4. Inspect `static/src/components/calendar_widget/calendar_widget_extension.xml`: verify QWeb name, inheritance mode, and XPath details.
-5. Select a real module XML file such as `demo_odoo_module/views/calendar_edition_views.xml` and verify treemap drill-down, byte totals, breadcrumb navigation, Size/Lines switching, and inspector.
-6. Recheck a Python Odoo class and a method from Phase 3. Run the backend and frontend tests; on Windows, run `npm run build` as the full UI compile check.
-7. If you have any XML parsing issue, share the error, XML pattern and Odoo version; the scanner will preserve file totals even when parsing fails.
-
-## Phase 3 manual acceptance
-
-1. Open the sample addon, then `models/calendar_edition.py`: verify four field nodes appear when opening `CalendarEdition`.
-2. Click `name`, `day_ids`, and `day_count` and inspect their field types, relation, required, and compute metadata.
-3. Click `_compute_day_count`: verify role `compute` and dependency `day_ids`; click `action_publish`: verify `business action`.
-4. Open sample `controllers/preview.py`, click its class and route method, and verify `/demo/calendar/preview`, `auth=user`, `type=http`.
-5. Open your `demo_odoo_module/models/calendar_edition.py` and `calendar_import.py`, checking inheritance and field lists, without any Odoo server running.
-6. Check Size / Lines treemaps and breadcrumb navigation and ensure total bytes/lines remain consistent.
-7. Verify XML/JS files still behave as in Phase 1, and ordinary Python classes as in Phase 2.
-8. Run backend `pytest -q` and frontend `npm test && npm run build` locally.
-
-## Repository workflow
-
-Local development → your Windows acceptance testing → **push only an accepted phase** to `main`.
-
-Repository: https://github.com/Gadero5565/odoo-module-explorer
-
-Detailed plan and test checklist: [docs/ROADMAP.md](docs/ROADMAP.md).
+No project-wide license has been selected yet. The TypeScript parser dependency is distributed with its own upstream license. Please add an explicit project license before public redistribution.

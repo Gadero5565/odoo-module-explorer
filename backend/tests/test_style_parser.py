@@ -1,4 +1,4 @@
-"""Phase 6 CSS/SCSS structural and byte-preservation regression tests."""
+"""CSS/SCSS structural and byte-preservation regression tests."""
 
 from app.parsers.style_parser import inspect_style_source
 

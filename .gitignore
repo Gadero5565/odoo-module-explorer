@@ -24,7 +24,7 @@ Thumbs.db
 .env
 .env.*
 
-# Phase 9 release output and generated bundled assets
+# Release output and generated bundled assets
 release/
 .release-venv/
 backend/app/web_dist/

@@ -1,4 +1,4 @@
-"""Phase 8: bounded, process-local incremental analysis cache and revisions.
+"""Refresh system: bounded, process-local incremental analysis cache and revisions.
 
 Only filesystem metadata and parsed symbol models are cached. Nothing is written
 inside the scanned addon. Cache entries are invalidated on a changed file stat

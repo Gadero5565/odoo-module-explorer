@@ -139,3 +139,55 @@ test('Refresh navigation retains existing nodes and falls back after deletion', 
   assert.equal(nearestExistingId('models/deleted.py', index), 'models');
   assert.equal(nearestExistingId('gone/nested/missing.py', index), '.');
 });
+
+function pythonSymbol(id, kind, size, lines, children = []) {
+  return { id, name: id.split('::').at(-1), kind, relative_path: 'models/demo.py',
+    size_bytes: size, line_count: lines, decorators: [], children };
+}
+
+test('Python visibility defaults to methods only without mutating physical source metrics', () => {
+  const { filterPythonSymbols, DEFAULT_PYTHON_VISIBILITY, pythonScopeMetrics } = runtimeModule.exports;
+  const field = pythonSymbol('demo.py::field:code', 'odoo_field', 60, 4);
+  const remainder = pythonSymbol('demo.py::@code', 'code', 20, 2);
+  const nestedCode = pythonSymbol('demo.py::method:do_it::@code', 'code', 90, 7);
+  const method = pythonSymbol('demo.py::method:do_it', 'method', 100, 9, [nestedCode]);
+  const klass = pythonSymbol('demo.py::class:Example', 'class', 180, 15, [field, method, remainder]);
+  const filtered = filterPythonSymbols(klass, DEFAULT_PYTHON_VISIBILITY);
+  assert.deepEqual(filtered.children.map(node => node.kind), ['method']);
+  assert.equal(filtered.children[0].children.length, 0);
+  assert.equal(klass.children.length, 3);
+  assert.equal(klass.children[1].children.length, 1);
+  assert.equal(filtered.size_bytes, 180);
+  assert.deepEqual(pythonScopeMetrics(klass, filtered), {
+    visibleCount: 1, hiddenCount: 2, visibleBytes: 100, hiddenBytes: 80,
+    visibleLines: 9, totalBytes: 180, totalLines: 15,
+  });
+});
+
+test('Python checkboxes independently reveal fields and residual source code', () => {
+  const { filterPythonSymbols } = runtimeModule.exports;
+  const klass = pythonSymbol('p.py::class:Foo', 'class', 160, 11, [
+    pythonSymbol('p.py::field:name', 'odoo_field', 40, 2),
+    pythonSymbol('p.py::method:run', 'method', 90, 7),
+    pythonSymbol('p.py::@code', 'code', 30, 2),
+  ]);
+  const fieldsOn = filterPythonSymbols(klass, {showFields: true, showOtherCode: false});
+  const codeOn = filterPythonSymbols(klass, {showFields: false, showOtherCode: true});
+  const allOn = filterPythonSymbols(klass, {showFields: true, showOtherCode: true});
+  assert.deepEqual(fieldsOn.children.map(node => node.kind), ['odoo_field', 'method']);
+  assert.deepEqual(codeOn.children.map(node => node.kind), ['method', 'code']);
+  assert.equal(allOn.children.length, 3);
+  assert.equal(allOn.children.reduce((sum, node) => sum + node.size_bytes, 0), 160);
+});
+
+test('Hiding a selected Python node falls back to a visible ancestor', () => {
+  const { filterPythonSymbols, indexPythonSymbols, nearestVisiblePythonId } = runtimeModule.exports;
+  const field = pythonSymbol('p.py::field:f', 'odoo_field', 50, 2);
+  const method = pythonSymbol('p.py::method:m', 'method', 40, 3);
+  const klass = pythonSymbol('p.py::class:C', 'class', 110, 7, [field, method, pythonSymbol('p.py::@code', 'code', 20, 2)]);
+  const root = pythonSymbol('p.py', 'file', 110, 7, [klass]);
+  const visible = indexPythonSymbols(filterPythonSymbols(root, {showFields: false, showOtherCode: false}));
+  assert.equal(nearestVisiblePythonId(root, visible, field.id), klass.id);
+  assert.equal(nearestVisiblePythonId(root, visible, method.id), method.id);
+  assert.equal(nearestVisiblePythonId(root, visible, 'p.py::deleted'), root.id);
+});

@@ -1,4 +1,4 @@
-"""Phase 9 launch tests (no browser/network process started by tests)."""
+"""CLI launch tests (no browser/network process started by tests)."""
 from pathlib import Path
 
 import pytest

@@ -1,4 +1,4 @@
-"""Phase 7 module-wide index: search provenance, graph edges, safety, and bounds."""
+"""Module-wide index: search provenance, graph edges, safety, and bounds."""
 
 from pathlib import Path
 

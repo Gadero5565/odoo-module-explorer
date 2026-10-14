@@ -49,6 +49,6 @@ export default function DetailsPanel({ node, modulePath, onSelect }: Props) {
         {topChildren.map(child => <button className="largest-item" key={child.id} title={child.relative_path} onClick={() => onSelect(child)}><span className="truncate">{child.name}</span><span>{formatBytes(child.size_bytes)}</span></button>)}
       </div>
     </>}
-    {!isDir && <div className="detail-note"><Info size={15} /><span>Click a Python file to explore classes, functions, methods, and decorators. Odoo field semantics are planned for Phase 3.</span></div>}
+    {!isDir && <div className="detail-note"><Info size={15} /><span>Click a Python file to explore classes, functions, methods, and decorators. Odoo-aware field metadata is available when inspecting Python model classes.</span></div>}
   </div>;
 }

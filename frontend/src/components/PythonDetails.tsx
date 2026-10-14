@@ -52,9 +52,10 @@ export default function PythonDetails({ node, modulePath, onSelect }: Props) {
       <Detail label="_inherit" value={klass.inherits.join(', ') || null}/>
       <Detail label="_inherits" value={Object.entries(klass.delegates).map(([model, key]) => `${model}: ${key}`).join(', ') || null}/>
       {klass.category !== 'controller' && <>
-        <Detail label="Field declarations" value={klass.field_count}/>
+        <Detail label="Fields shown" value={fields.length}/>
+        <Detail label="Fields in source" value={klass.field_count}/>
         <Detail label="Direct methods" value={klass.method_count}/>
-        {!!Object.keys(klass.field_types).length && <div className="odoo-type-summary">{Object.entries(klass.field_types).sort((a, b) => b[1] - a[1]).map(([name, count]) => <span className="odoo-chip" key={name}>{name} × {count}</span>)}</div>}
+        {!!fields.length && !!Object.keys(klass.field_types).length && <div className="odoo-type-summary">{Object.entries(klass.field_types).sort((a, b) => b[1] - a[1]).map(([name, count]) => <span className="odoo-chip" key={name}>{name} × {count}</span>)}</div>}
       </>}
       {!klass.model_name && klass.inherits.length > 0 && <p className="semantic-note">Extension-only class: the Odoo registry may combine it with other classes.</p>}
     </div>}

@@ -12,9 +12,10 @@ import XMLDetails from './components/XMLDetails';
 import JSDetails from './components/JSDetails';
 import StyleDetails from './components/StyleDetails';
 import InsightsPanel from './components/InsightsPanel';
-import { filterTree, formatBytes, formatNumber, metricValue, indexNodes, indexPythonSymbols, indexXMLSymbols, indexJSSymbols, indexStyleSymbols, parentId, nearestExistingId, pythonSymbolPath, xmlSymbolPath, jsSymbolPath, styleSymbolPath } from './lib/analysis';
+import { filterTree, formatBytes, formatNumber, metricValue, indexNodes, indexPythonSymbols, filterPythonSymbols, nearestVisiblePythonId, pythonScopeMetrics, DEFAULT_PYTHON_VISIBILITY, indexXMLSymbols, indexJSSymbols, indexStyleSymbols, parentId, nearestExistingId, pythonSymbolPath, xmlSymbolPath, jsSymbolPath, styleSymbolPath } from './lib/analysis';
 import type { AnalysisResult, DisplayFilters, FileNode, Metric, RefreshResponse } from './types/analysis';
 import type { PythonInspection, PythonSymbol } from './types/python';
+import type { PythonVisibility } from './lib/analysis';
 import type { XMLInspection, XMLSymbol } from './types/xml';
 import type { JSInspection, JSSymbol } from './types/javascript';
 import type { StyleInspection, StyleSymbol } from './types/styles';
@@ -35,6 +36,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<DisplayFilters>(DEFAULT_FILTERS);
+  const [pythonVisibility, setPythonVisibility] = useState<PythonVisibility>(DEFAULT_PYTHON_VISIBILITY);
   const [metric, setMetric] = useState<Metric>('size_bytes');
   const [currentId, setCurrentId] = useState('.');
   const [selectedId, setSelectedId] = useState('.');
@@ -98,7 +100,7 @@ export default function App() {
       }
       setResult(payload as AnalysisResult);
       setSyncMessage('Up to date'); setChangedPaths([]);
-      setCurrentId('.'); setSelectedId('.'); setSearch(''); setFilters(DEFAULT_FILTERS);
+      setCurrentId('.'); setSelectedId('.'); setSearch(''); setFilters(DEFAULT_FILTERS); setPythonVisibility(DEFAULT_PYTHON_VISIBILITY);
       setPythonFilePath(null); setPythonInspection(null); setPythonError(null);
       setSymbolDrillId(null); setSymbolSelectedId(null);
       setXMLFilePath(null); setXMLInspection(null); setXMLError(null);
@@ -282,9 +284,18 @@ export default function App() {
   const index = useMemo(() => tree ? indexNodes(tree) : new Map<string, FileNode>(), [tree]);
   const currentFolder = (index.get(currentId)?.kind === 'directory' ? index.get(currentId) : null) || tree;
   const selectedNode = index.get(selectedId) || currentFolder;
-  const pythonIndex = useMemo(() => pythonInspection ? indexPythonSymbols(pythonInspection.file) : new Map<string, PythonSymbol>(), [pythonInspection]);
-  const currentPython = pythonInspection ? pythonIndex.get(symbolDrillId || '') || pythonInspection.file : null;
-  const selectedPython = pythonInspection ? pythonIndex.get(symbolSelectedId || '') || pythonInspection.file : null;
+  const visiblePythonFile = useMemo(() => pythonInspection
+    ? filterPythonSymbols(pythonInspection.file, pythonVisibility) : null, [pythonInspection, pythonVisibility]);
+  const pythonIndex = useMemo(() => visiblePythonFile ? indexPythonSymbols(visiblePythonFile)
+    : new Map<string, PythonSymbol>(), [visiblePythonFile]);
+  const visiblePythonId = (id: string | null) => pythonInspection
+    ? nearestVisiblePythonId(pythonInspection.file, pythonIndex, id) : '';
+  const currentPython = visiblePythonFile ? pythonIndex.get(visiblePythonId(symbolDrillId)) || visiblePythonFile : null;
+  const selectedPython = visiblePythonFile ? pythonIndex.get(visiblePythonId(symbolSelectedId)) || visiblePythonFile : null;
+  const originalPythonIndex = useMemo(() => pythonInspection ? indexPythonSymbols(pythonInspection.file)
+    : new Map<string, PythonSymbol>(), [pythonInspection]);
+  const pythonScope = pythonInspection && currentPython
+    ? pythonScopeMetrics(originalPythonIndex.get(currentPython.id) || pythonInspection.file, currentPython) : null;
   const xmlIndex = useMemo(() => xmlInspection ? indexXMLSymbols(xmlInspection.file) : new Map<string, XMLSymbol>(), [xmlInspection]);
   const currentXML = xmlInspection ? xmlIndex.get(xmlDrillId || '') || xmlInspection.file : null;
   const selectedXML = xmlInspection ? xmlIndex.get(xmlSelectedId || '') || xmlInspection.file : null;
@@ -362,7 +373,11 @@ export default function App() {
       if (!path.length) { setPendingJump(null); return; }
       const focus = path[path.length - 1];
       const parent = focus.children.length ? focus : (path[path.length - 2] || root);
-      if (kind === 'python') { setSymbolDrillId(parent.id); setSymbolSelectedId(focus.id); }
+      if (kind === 'python') {
+        if (focus.kind === 'odoo_field') setPythonVisibility(old => ({...old, showFields: true}));
+        if (focus.kind === 'code') setPythonVisibility(old => ({...old, showOtherCode: true}));
+        setSymbolDrillId(parent.id); setSymbolSelectedId(focus.id);
+      }
       if (kind === 'xml') { setXMLDrillId(parent.id); setXMLSelectedId(focus.id); }
       if (kind === 'js') { setJSDrillId(parent.id); setJSSelectedId(focus.id); }
       if (kind === 'style') { setStyleDrillId(parent.id); setStyleSelectedId(focus.id); }
@@ -452,12 +467,12 @@ export default function App() {
   return <div className="app-shell">
     <header className="global-header">
       <div className="brand"><div className="brand-icon"><Layers3 size={21}/></div><div><strong>Odoo Module Explorer</strong><span>CODE STRUCTURE ANALYZER</span></div></div>
-      <div className="header-actions"><span className="phase-tag"><span className="live-dot"/> PHASE 08 · LIVE REFRESH</span><a className="github-link" href="https://github.com/Gadero5565/odoo-module-explorer" target="_blank" rel="noopener noreferrer" title="Project GitHub repository"><Github size={18}/><span>GitHub</span></a></div>
+      <div className="header-actions"><span className="phase-tag"><span className="live-dot"/> LOCAL · READ-ONLY</span><a className="github-link" href="https://github.com/Gadero5565/odoo-module-explorer" target="_blank" rel="noopener noreferrer" title="Project GitHub repository"><Github size={18}/><span>GitHub</span></a></div>
     </header>
 
     <section className="input-bar">
       <div className="input-container">
-        <div className="path-input-wrap"><FolderOpen size={19}/><input aria-label="Odoo module directory" value={modulePath} onChange={event => setModulePath(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void runAnalysis(modulePath); }} placeholder="Enter module path, e.g. C:\\odoo19\\custom_addons\\demo_odoo_module" /></div>
+        <div className="path-input-wrap"><FolderOpen size={19}/><input aria-label="Odoo module directory" value={modulePath} onChange={event => setModulePath(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void runAnalysis(modulePath); }} placeholder="Enter module path, e.g. C:\\odoo\\custom_addons\\my_addon" /></div>
         <select aria-label="Odoo version override" value={versionOverride} onChange={event => setVersionOverride(event.target.value)} title="Leave Auto to read version from manifest"><option value="">Version: Auto</option>{['16','17','18','19'].map(v => <option value={v} key={v}>Odoo {v}</option>)}</select>
         <button className="primary-button" disabled={loading} onClick={() => void runAnalysis(modulePath)}>{loading ? <LoaderCircle size={17} className="spin"/> : <BarChart3 size={17}/>} {loading ? 'Analyzing…' : 'Analyze Module'}</button>
       </div>
@@ -497,8 +512,8 @@ export default function App() {
         </aside>
 
         <main className="main-panel">
-          <div className="explorer-toolbar"><div className="breadcrumbs">{crumbs.map((crumb, i) => <span key={crumb.id} className="crumb-wrap">{i > 0 && <ChevronRight size={15}/>}<button className={i === crumbs.length - 1 ? 'active-crumb' : ''} onClick={() => navigate(crumb.id)} title={crumb.id}>{crumb.name}</button></span>)}</div><div className="toolbar-actions"><div className="metric-group" role="group" aria-label="Treemap metric">{METRIC_OPTIONS.filter(option => !viewingStructure || option.key !== 'file_count').map(option => <button key={option.key} className={effectiveMetric === option.key ? 'metric-active' : ''} onClick={() => setMetric(option.key)}>{option.label}</button>)}</div><div className="filter-holder"><button className={`icon-button ${filters.sourceOnly || filters.excludeData ? 'filter-active' : ''}`} title="Display filters" aria-label="Display filters" onClick={() => setFilterOpen(!filterOpen)}><SlidersHorizontal size={17}/></button>{filterOpen && <div className="filter-popover"><strong>Display filters</strong><label><input type="checkbox" checked={filters.sourceOnly} onChange={e => setFilters(s => ({...s, sourceOnly: e.target.checked}))}/> Source code files only</label><label><input type="checkbox" checked={filters.excludeData} onChange={e => setFilters(s => ({...s, excludeData: e.target.checked}))}/> Hide data, demo and i18n folders</label><small>Charts and navigator reflect these filters. The top statistics always show all scanned files.</small></div>}</div></div></div>
-          <div className="view-heading"><div><div className="view-title">{viewingStructure ? (displayedNode?.name || 'Source structure') : currentFolder?.id === '.' ? 'Module overview' : currentFolder?.name || 'Folder'} <span className="view-pill">{viewingStructure ? (currentStyle?.kind || currentJS?.kind || currentXML?.kind || currentPython?.kind || 'SOURCE').toUpperCase().replaceAll('_', ' ') : 'DIRECTORY'}</span></div><div className="view-sub">{viewingStructure ? 'Click any source node to drill down · Physical source spans' : 'Click any rectangle to explore'} · Ranked by {effectiveMetric === 'size_bytes' ? 'size' : effectiveMetric === 'file_count' ? 'file count' : 'line count'}</div></div><div className="view-tally">{viewingStyles ? `${styleInspection?.selector_count || 0} selectors · ${styleInspection?.declaration_count || 0} declarations · ${styleInspection?.variable_count || 0} variables · ${styleInspection?.mixin_count || 0} mixins` : viewingJS ? `${jsInspection?.symbol_count || 0} symbols · ${jsInspection?.component_count || 0} OWL components · ${jsInspection?.registration_count || 0} registries` : viewingXML ? `${xmlInspection?.element_count || 0} elements · ${xmlInspection?.view_count || 0} views · ${xmlInspection?.xpath_count || 0} XPath` : viewingPython ? `${pythonInspection?.symbol_count || 0} definitions · ${pythonInspection?.odoo_field_count || 0} fields · ${pythonInspection?.odoo_model_count || 0} models` : `${formatNumber(currentFolder?.file_count || 0)} files`} <span>·</span> {formatBytes(displayedNode?.size_bytes || 0)}</div></div>
+          <div className="explorer-toolbar"><div className="breadcrumbs">{crumbs.map((crumb, i) => <span key={crumb.id} className="crumb-wrap">{i > 0 && <ChevronRight size={15}/>}<button className={i === crumbs.length - 1 ? 'active-crumb' : ''} onClick={() => navigate(crumb.id)} title={crumb.id}>{crumb.name}</button></span>)}</div><div className="toolbar-actions"><div className="metric-group" role="group" aria-label="Treemap metric">{METRIC_OPTIONS.filter(option => !viewingStructure || option.key !== 'file_count').map(option => <button key={option.key} className={effectiveMetric === option.key ? 'metric-active' : ''} onClick={() => setMetric(option.key)}>{option.label}</button>)}</div><div className="filter-holder"><button className={`icon-button ${filters.sourceOnly || filters.excludeData || (viewingPython && (pythonVisibility.showFields || pythonVisibility.showOtherCode)) ? 'filter-active' : ''}`} title="Display filters" aria-label="Display filters" onClick={() => setFilterOpen(!filterOpen)}><SlidersHorizontal size={17}/></button>{filterOpen && <div className="filter-popover"><strong>Display filters</strong><label><input type="checkbox" checked={filters.sourceOnly} onChange={e => setFilters(s => ({...s, sourceOnly: e.target.checked}))}/> Source code files only</label><label><input type="checkbox" checked={filters.excludeData} onChange={e => setFilters(s => ({...s, excludeData: e.target.checked}))}/> Hide data, demo and i18n folders</label>{viewingPython && <><div className="filter-divider"/><strong>Python symbols</strong><label><input type="checkbox" checked={pythonVisibility.showFields} onChange={e => setPythonVisibility(s => ({...s, showFields: e.target.checked}))}/> Show Odoo field declarations</label><label><input type="checkbox" checked={pythonVisibility.showOtherCode} onChange={e => setPythonVisibility(s => ({...s, showOtherCode: e.target.checked}))}/> Show other code / declarations</label></>}<small>Filtering changes visible rectangles, rankings and scope counts, not physical source sizes or the module-wide statistics.</small></div>}</div></div></div>
+          <div className="view-heading"><div><div className="view-title">{viewingStructure ? (displayedNode?.name || 'Source structure') : currentFolder?.id === '.' ? 'Module overview' : currentFolder?.name || 'Folder'} <span className="view-pill">{viewingStructure ? (currentStyle?.kind || currentJS?.kind || currentXML?.kind || currentPython?.kind || 'SOURCE').toUpperCase().replaceAll('_', ' ') : 'DIRECTORY'}</span></div><div className="view-sub">{viewingStructure ? 'Click any source node to drill down · Physical source spans' : 'Click any rectangle to explore'} · Ranked by {effectiveMetric === 'size_bytes' ? 'size' : effectiveMetric === 'file_count' ? 'file count' : 'line count'}</div></div><div className="view-tally">{viewingStyles ? `${styleInspection?.selector_count || 0} selectors · ${styleInspection?.declaration_count || 0} declarations · ${styleInspection?.variable_count || 0} variables · ${styleInspection?.mixin_count || 0} mixins` : viewingJS ? `${jsInspection?.symbol_count || 0} symbols · ${jsInspection?.component_count || 0} OWL components · ${jsInspection?.registration_count || 0} registries` : viewingXML ? `${xmlInspection?.element_count || 0} elements · ${xmlInspection?.view_count || 0} views · ${xmlInspection?.xpath_count || 0} XPath` : viewingPython ? `${pythonScope?.visibleCount || 0} shown · ${pythonScope?.hiddenCount || 0} hidden · ${formatBytes(pythonScope?.visibleBytes || 0)} visible` : `${formatNumber(currentFolder?.file_count || 0)} files`} <span>·</span> {formatBytes(displayedNode?.size_bytes || 0)} source</div></div>
           {pythonError && <div className="error-bar" role="alert"><AlertCircle size={15}/>{pythonError}</div>}
           {styleError && <div className="error-bar" role="alert"><AlertCircle size={15}/>{styleError}</div>}
           {styleInspection?.parse_error && <div className="error-bar" role="status"><AlertCircle size={15}/>{styleInspection.parse_error}. File totals remain available.</div>}
@@ -507,15 +522,20 @@ export default function App() {
           {xmlError && <div className="error-bar" role="alert"><AlertCircle size={15}/>{xmlError}</div>}
           {xmlInspection?.parse_error && <div className="error-bar" role="status"><AlertCircle size={15}/>{xmlInspection.parse_error}. File totals remain available.</div>}
           {pythonInspection?.parse_error && <div className="error-bar" role="status"><AlertCircle size={15}/>{pythonInspection.parse_error}. File totals remain available.</div>}
+          {viewingPython && pythonScope && <div className="python-filter-summary" aria-live="polite">
+            <span>Python treemap: <strong>{formatNumber(pythonScope.visibleCount)} visible</strong>, {formatNumber(pythonScope.hiddenCount)} hidden</span>
+            <span>{metric === 'line_count' ? `${formatNumber(pythonScope.visibleLines)} of ${formatNumber(pythonScope.totalLines)} lines` : `${formatBytes(pythonScope.visibleBytes)} of ${formatBytes(pythonScope.totalBytes)} bytes`} in this source scope</span>
+            <button onClick={() => setFilterOpen(true)} title="Change Python symbol visibility"><SlidersHorizontal size={13}/> Configure</button>
+          </div>}
           <div className="treemap-container">{(viewingPython && pythonLoading) || (viewingXML && xmlLoading) || (viewingJS && jsLoading) || (viewingStyles && styleLoading) ? <div className="empty-treemap"><LoaderCircle size={18} className="spin"/> Inspecting source structure…</div> : displayedNode && <Treemap folder={displayedNode} metric={effectiveMetric} selectedId={displayedSelection?.id || '.'} onSelect={onVisualSelect}/>}</div>
           <div className="rank-panel"><div className="rank-header"><strong>LARGEST ITEMS</strong><span>IN CURRENT {viewingStructure ? 'SOURCE SCOPE' : 'DIRECTORY'}</span></div>{(!viewingStructure || !!pythonInspection || !!xmlInspection || !!jsInspection || !!styleInspection) && displayedNode?.children.length ? [...displayedNode.children].sort((a, b) => metricValue(b, effectiveMetric) - metricValue(a, effectiveMetric) || a.name.localeCompare(b.name)).slice(0, 15).map((node, rowIndex) => <button className={`rank-row ${displayedSelection?.id === node.id ? 'rank-selected' : ''}`} key={node.id} onClick={() => onVisualSelect(node)}><span className="rank-index">{String(rowIndex + 1).padStart(2, '0')}</span>{node.kind === 'directory' ? <Folder size={17} className="rank-folder"/> : <FileCode2 size={16}/>}<span className="rank-name truncate">{node.name}</span><span className="rank-meta">{node.kind === 'directory' ? `${formatNumber(node.file_count)} files` : node.kind === 'file' ? ('extension' in node ? node.extension || 'FILE' : 'tag' in node ? 'XML' : 'metadata' in node ? (viewingStyles ? 'STYLES' : 'JS') : 'PYTHON') : node.kind.replaceAll('_',' ')}</span><strong>{effectiveMetric === 'size_bytes' ? formatBytes(node.size_bytes) : formatNumber(metricValue(node, effectiveMetric))}</strong><ChevronRight size={15}/></button>) : <div className="rank-empty">No definitions in this scope.</div>}</div>
         </main>
 
-        <aside className="details-sidebar"><div className="details-top"><span>INSPECTOR</span><span className="inspector-tag">PHASE 8</span></div>{selectedStyle ? <StyleDetails node={selectedStyle} inspection={styleInspection} modulePath={result.module.absolute_path} onSelect={onStyleSymbolSelect}/> : selectedJS ? <JSDetails node={selectedJS} inspection={jsInspection} modulePath={result.module.absolute_path} onSelect={onJSSymbolSelect}/> : selectedXML ? <XMLDetails node={selectedXML} modulePath={result.module.absolute_path} onSelect={onXMLSymbolSelect}/> : selectedPython ? <PythonDetails node={selectedPython} modulePath={result.module.absolute_path} onSelect={onSymbolSelect}/> : selectedNode && <DetailsPanel node={selectedNode} modulePath={result.module.absolute_path} onSelect={onSelect}/>}</aside>
+        <aside className="details-sidebar"><div className="details-top"><span>INSPECTOR</span><span className="inspector-tag">SOURCE</span></div>{selectedStyle ? <StyleDetails node={selectedStyle} inspection={styleInspection} modulePath={result.module.absolute_path} onSelect={onStyleSymbolSelect}/> : selectedJS ? <JSDetails node={selectedJS} inspection={jsInspection} modulePath={result.module.absolute_path} onSelect={onJSSymbolSelect}/> : selectedXML ? <XMLDetails node={selectedXML} modulePath={result.module.absolute_path} onSelect={onXMLSymbolSelect}/> : selectedPython ? <PythonDetails node={selectedPython} modulePath={result.module.absolute_path} onSelect={onSymbolSelect}/> : selectedNode && <DetailsPanel node={selectedNode} modulePath={result.module.absolute_path} onSelect={onSelect}/>}</aside>
       </div>
       }
       {result.warnings.length > 0 && <div className="warnings-strip"><AlertCircle size={15}/>{result.warnings.length} scanning warning(s), e.g. {result.warnings[0].relative_path}: {result.warnings[0].reason}</div>}
-      <div className="workspace-footer"><span>Odoo Module Explorer v0.8.0</span><span>Supports Odoo 16–19 · Static source and model insights</span></div>
+      <div className="workspace-footer"><span>Odoo Module Explorer v0.1.0</span><span>Supports Odoo 16–19 · Static source and model insights</span></div>
     </div>}
   </div>;
 }
