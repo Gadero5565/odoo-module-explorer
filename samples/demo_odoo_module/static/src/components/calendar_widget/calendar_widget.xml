@@ -1,0 +1,5 @@
+<templates xml:space="preserve">
+    <t t-name="demo.CalendarWidget">
+        <div class="o_calendar_widget">Demo calendar</div>
+    </t>
+</templates>

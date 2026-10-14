@@ -1,0 +1,16 @@
+<odoo>
+    <record id="view_demo_calendar_edition_form" model="ir.ui.view">
+        <field name="name">demo.calendar.edition.form</field>
+        <field name="model">demo.calendar.edition</field>
+        <field name="arch" type="xml">
+            <form string="Edition">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="year"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>
