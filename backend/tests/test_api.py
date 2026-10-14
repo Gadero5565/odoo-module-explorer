@@ -8,7 +8,7 @@ client = TestClient(app)
 
 
 def test_health():
-    assert client.get("/api/health").json() == {"status": "ok", "phase": "5"}
+    assert client.get("/api/health").json() == {"status": "ok", "phase": "6"}
 
 
 def test_demo_analysis():
@@ -132,3 +132,41 @@ def test_js_inspection_endpoint_and_path_guard(tmp_path):
             'module_path': demo, 'relative_path': illegal
         })
         assert response.status_code == 400
+
+
+def test_style_inspection_endpoint_and_path_guards(tmp_path):
+    demo = client.get('/api/config').json()['demo_module_path']
+    css = client.post('/api/styles/inspect', json={
+        'module_path': demo,
+        'relative_path': 'static/src/components/calendar_widget/calendar_print.css',
+    })
+    assert css.status_code == 200, css.text
+    assert css.json()['syntax'] == 'css'
+    assert css.json()['selector_count'] == 2
+    assert css.json()['declaration_count'] == 3
+    scss = client.post('/api/styles/inspect', json={
+        'module_path': demo,
+        'relative_path': 'static/src/components/calendar_widget/calendar_widget.scss',
+    })
+    assert scss.status_code == 200, scss.text
+    assert scss.json()['mixin_count'] == 1
+    assert scss.json()['variable_count'] == 2
+    assert scss.json()['selector_count'] == 2
+    for illegal in ('../secrets.css', '/etc/passwd.css', 'C:/Windows/x.scss',
+                    'models/calendar_day.py', 'folder\\outside.css'):
+        response = client.post('/api/styles/inspect', json={
+            'module_path': demo, 'relative_path': illegal,
+        })
+        assert response.status_code == 400, illegal
+
+
+def test_style_bad_syntax_api_preserves_file_stats(tmp_path):
+    module = _make_test_module(tmp_path)
+    (module / 'broken.scss').write_text('.x { color:red;', encoding='utf-8')
+    response = client.post('/api/styles/inspect', json={
+        'module_path': str(module), 'relative_path': 'broken.scss',
+    })
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['parse_error']
+    assert payload['file']['size_bytes'] == len('.x { color:red;')
