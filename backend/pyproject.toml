@@ -20,6 +20,9 @@ dev = ["pytest>=8,<10", "httpx>=0.27,<1", "ruff>=0.7,<1"]
 [tool.setuptools.packages.find]
 include = ["app*"]
 
+[tool.setuptools.package-data]
+"app.parsers" = ["*.cjs"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 

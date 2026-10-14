@@ -8,7 +8,7 @@ client = TestClient(app)
 
 
 def test_health():
-    assert client.get("/api/health").json() == {"status": "ok", "phase": "4"}
+    assert client.get("/api/health").json() == {"status": "ok", "phase": "5"}
 
 
 def test_demo_analysis():
@@ -114,3 +114,21 @@ def test_demo_odoo_inspection_field_metadata_and_routes():
     })
     assert controller.status_code == 200
     assert controller.json()['odoo_route_count'] == 1
+
+
+def test_js_inspection_endpoint_and_path_guard(tmp_path):
+    demo = client.get('/api/config').json()['demo_module_path']
+    path = 'static/src/components/calendar_widget/calendar_widget.js'
+    response = client.post('/api/javascript/inspect', json={
+        'module_path': demo, 'relative_path': path
+    })
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body['component_count'] == 1
+    assert body['registration_count'] == 1
+    assert body['file']['size_bytes'] > 0
+    for illegal in ('../x.js', '/tmp/x.js', 'C:/outside.js', 'models/calendar_edition.py'):
+        response = client.post('/api/javascript/inspect', json={
+            'module_path': demo, 'relative_path': illegal
+        })
+        assert response.status_code == 400

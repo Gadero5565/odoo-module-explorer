@@ -7,9 +7,11 @@ from fastapi import APIRouter, HTTPException
 from app.core.module_detector import SUPPORTED_VERSIONS, inspect_module
 from app.core.scanner import AnalysisError, DirectoryScanner, resolve_module_path
 from app.core.source_files import resolve_source_file
+from app.parsers.js_parser import MAX_JS_BYTES, JSInspectionError, inspect_js_source
 from app.parsers.python_parser import MAX_PYTHON_BYTES, PythonInspectionError, inspect_python_source
 from app.parsers.xml_parser import MAX_XML_BYTES, XMLInspectionError, inspect_xml_source
 from app.schemas.analysis import AnalysisResult, AnalyzeRequest, ConfigResponse, ModuleDetails
+from app.schemas.js_inspection import JSInspectRequest, JSInspection
 from app.schemas.python_inspection import PythonInspectRequest, PythonInspection
 from app.schemas.xml_inspection import XMLInspectRequest, XMLInspection
 
@@ -19,7 +21,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 @router.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "phase": "4"}
+    return {"status": "ok", "phase": "5"}
 
 
 @router.get("/config", response_model=ConfigResponse)
@@ -69,3 +71,16 @@ def inspect_xml(request: XMLInspectRequest) -> XMLInspection:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except OSError as exc:
         raise HTTPException(status_code=400, detail='Could not read XML source file.') from exc
+
+
+@router.post("/javascript/inspect", response_model=JSInspection)
+def inspect_javascript(request: JSInspectRequest) -> JSInspection:
+    """Inspect a JS file using syntax parsing, never executing addon source."""
+    try:
+        path = resolve_source_file(request.module_path, request.version_override,
+                                   request.relative_path, '.js', MAX_JS_BYTES)
+        return inspect_js_source(request.relative_path, path.read_bytes())
+    except (AnalysisError, JSInspectionError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except OSError as exc:
+        raise HTTPException(status_code=400, detail='Could not read JavaScript source file.') from exc
