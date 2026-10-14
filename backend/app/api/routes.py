@@ -1,5 +1,6 @@
 """Localhost-only analysis endpoints."""
 
+import os
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -26,14 +27,18 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 @router.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "phase": "8"}
+    return {"status": "ok", "phase": "9"}
 
 
 @router.get("/config", response_model=ConfigResponse)
 def config() -> ConfigResponse:
+    development_demo = PROJECT_ROOT / "samples" / "demo_odoo_module"
+    bundled_demo = Path(__file__).resolve().parents[1] / "demo_addon"
+    demo_path = development_demo if development_demo.is_dir() else bundled_demo
     return ConfigResponse(
-        demo_module_path=str(PROJECT_ROOT / "samples" / "demo_odoo_module"),
+        demo_module_path=str(demo_path) if demo_path.is_dir() else "",
         supported_versions=sorted(SUPPORTED_VERSIONS),
+        initial_module_path=os.getenv("ODOO_EXPLORER_INITIAL_MODULE") or None,
     )
 
 

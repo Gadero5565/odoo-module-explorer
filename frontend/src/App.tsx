@@ -78,7 +78,8 @@ export default function App() {
 
   useEffect(() => {
     fetch('/api/config').then(response => response.ok ? response.json() : null)
-      .then(data => { if (data?.demo_module_path) setDemoPath(data.demo_module_path); })
+      .then(data => { if (data?.demo_module_path) setDemoPath(data.demo_module_path);
+        if (data?.initial_module_path) setModulePath(data.initial_module_path); })
       .catch(() => { /* backend unavailable message appears on submission */ });
   }, []);
 
@@ -110,7 +111,7 @@ export default function App() {
       setInsights(null); setInsightsError(null); setInsightsLoading(false); setPendingJump(null);
       setWorkspaceMode('explorer');
     } catch (err) {
-      setError(err instanceof TypeError ? 'Could not connect to FastAPI. Start the backend on 127.0.0.1:7764.' : (err as Error).message);
+      setError(err instanceof TypeError ? 'Could not connect to the local analysis API. Check that the server is running.' : (err as Error).message);
     } finally { setLoading(false); }
   }, [versionOverride]);
 

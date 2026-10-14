@@ -1,3 +1,11 @@
+# Phase 9 — Packaging and First Release (candidate)
+
+A developer-friendly wheel distribution that includes the compiled React frontend, a bundled TypeScript grammar for static JS inspection, the example addon, and the `odoo-explorer` CLI. The binary Node.js runtime is **not** bundled and is required to inspect JS/OWL. Supports Python 3.10–3.13 and Odoo 16–19.
+
+Phase 9 acceptance: build on Windows, install the produced wheel into a fresh venv, run `odoo-explorer "C:\path\to\addon"`, navigate localhost UI, inspect JS without frontend/node_modules, exercise refresh, run backend and frontend tests, and check GitHub Actions wheel upload. Only push to main after approval; tag a release once a wheel is tested.
+
+---
+
 # Development plan — Odoo Module Explorer
 
 Target Odoo versions: **16, 17, 18, 19**. Standalone local application first; editor plugins later.

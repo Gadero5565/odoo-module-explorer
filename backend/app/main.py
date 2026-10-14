@@ -1,4 +1,4 @@
-"""FastAPI entry point, local development and optional compiled frontend serving."""
+"""FastAPI entry point with development and release-bundled frontend support."""
 
 from pathlib import Path
 
@@ -9,8 +9,10 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router
 
+APP_VERSION = "0.1.0"
+
 app = FastAPI(
-    title="Odoo Module Explorer", version="0.1.0",
+    title="Odoo Module Explorer", version=APP_VERSION,
     description="Read-only static filesystem analysis of Odoo addons (v16–19)",
 )
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
@@ -22,7 +24,19 @@ app.add_middleware(
 )
 app.include_router(router)
 
-# `npm run build` creates this folder. Users can then run only the Python server.
-frontend_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
-if frontend_dist.is_dir():
+# Prefer the portable UI embedded in the installed wheel. In a source checkout,
+# still support npm run build without requiring a package rebuild.
+BUNDLED_WEB = Path(__file__).resolve().parent / "web_dist"
+DEVELOPMENT_WEB = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+
+
+def frontend_directory() -> Path | None:
+    for candidate in (BUNDLED_WEB, DEVELOPMENT_WEB):
+        if (candidate / "index.html").is_file():
+            return candidate
+    return None
+
+
+frontend_dist = frontend_directory()
+if frontend_dist is not None:
     app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")

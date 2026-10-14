@@ -23,3 +23,14 @@ Thumbs.db
 *.log
 .env
 .env.*
+
+# Phase 9 release output and generated bundled assets
+release/
+.release-venv/
+backend/app/web_dist/
+backend/app/vendor/typescript.js
+backend/app/vendor/LICENSE.txt
+backend/app/demo_addon/
+backend/build/
+backend/dist/
+*.whl

@@ -11,11 +11,14 @@ function loadTypeScript() {
   const projectFrontend = path.resolve(__dirname, '../../../frontend');
   const candidates = [];
   if (process.env.ODOO_EXPLORER_TYPESCRIPT_PATH) candidates.push(process.env.ODOO_EXPLORER_TYPESCRIPT_PATH);
+  // Built release wheels include the TypeScript grammar, so end users do not
+  // need node_modules/npm. Node.js itself is still required for inspection.
+  candidates.push(path.resolve(__dirname, '../vendor/typescript.js'));
   try { candidates.push(require.resolve('typescript', { paths: [projectFrontend] })); } catch (_) { /* fallback below */ }
   for (const item of candidates) {
     try { return require(item); } catch (_) { /* next candidate */ }
   }
-  throw new Error('TypeScript parser missing. Run npm install inside the frontend directory.');
+  throw new Error('TypeScript parser missing. For source use npm ci in frontend, or install a built release wheel.');
 }
 
 function inspect(ts, relativePath, source) {

@@ -1,0 +1,4 @@
+recursive-include app/web_dist *
+recursive-include app/vendor *
+recursive-include app/demo_addon *
+recursive-include app/parsers *.cjs

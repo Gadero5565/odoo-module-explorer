@@ -1,3 +1,50 @@
+# Phase 9 — Standalone release candidate (v0.1.0)
+
+**Status:** Source implementation complete; Windows release build and installed-wheel smoke tests must pass before tagging. No Odoo server is needed. Supports Odoo 16–19.
+
+## Quick start for developers (existing checkout)
+
+The two-terminal development workflow remains unchanged: `cd backend && pip install -e ".[dev]" && uvicorn app.main:app --reload --port 7764`, and in a second terminal `cd frontend && npm install && npm run dev`.
+
+To launch from a **single terminal** after building the UI once:
+
+```powershell
+cd frontend
+npm install          # creates/updates package-lock.json if necessary
+npm run build
+cd ..
+python -m pip install -e .\backend
+odoo-explorer "C:\path\to\your\odoo19_addon"
+```
+
+Open `http://127.0.0.1:7764`. The CLI opens a browser by default; `--no-browser` disables it, `--port 17764` changes the port and `--version` shows the installed version. The addon argument is optional and prepopulates the path field; click **Analyze**. The CLI intentionally binds to loopback only.
+
+## Build the distributable wheel (Windows)
+
+Requires Python **3.10–3.13**, Node.js **20+**, npm, and pip plus `setuptools` and `wheel` in the build environment.
+
+```powershell
+python -m pip install --upgrade setuptools wheel
+.\scripts\build_release.ps1
+# or: python scripts/build_release.py
+.\scripts\install_release.ps1 -Version 3.10
+.\release-venv\Scripts\odoo-explorer.exe --version
+.\release-venv\Scripts\odoo-explorer.exe "C:\path\to\your\odoo19_addon"
+```
+
+The build generates `release/odoo_module_explorer_backend-0.1.0-py3-none-any.whl`, and bundles the production React UI, TypeScript parser grammar (with its license), and demo Odoo addon. Install that wheel into a clean virtualenv to test the real release rather than relying on the source tree. Python dependencies install via pip; **Node.js remains required for JavaScript/OWL inspection**, but neither npm nor frontend/node_modules is needed after installing the wheel.
+
+For a build where npm dependencies are already installed and frontend/dist already exists, run `python scripts/build_release.py --skip-npm`. Bundled/generated assets are excluded from Git. To check the CI pipeline, see `.github/workflows/release-wheel.yml` (manual dispatch or `v*` tags); it uploads the wheel as a workflow artifact and does not publish to PyPI. Do not create a release tag until the Windows and CI checks pass.
+
+### Important security and scope notes
+
+- All analysis is read-only and offline after installation. The analyzer runs locally and binds only `127.0.0.1`; it does not import or execute the selected addon.
+- Port must be 1024–65535; `7764` is the default.
+- TypeScript grammar is bundled in release wheels, but the Node executable is an external prerequisite for `.js` inspection.
+- Source checkouts without `frontend/dist` still support the original two-terminal dev workflow. The standalone CLI requires a built web UI and provides a helpful error when it is missing.
+
+---
+
 # Odoo Module Explorer
 
 A local, **read-only** explorer for Odoo addons (Odoo **16, 17, 18, 19**). Python / FastAPI backend and React / TypeScript / Apache ECharts frontend.
@@ -16,12 +63,12 @@ A local, **read-only** explorer for Odoo addons (Odoo **16, 17, 18, 19**). Pytho
 
 **Phase 7 (accepted):** Open **Advanced Insights** after analyzing an addon. A bounded on-demand index searches symbols across Python, XML/QWeb, JavaScript/OWL and SCSS/CSS. Explore logical Odoo model identities (`_name` and `_inherit`), member fields/methods, XML views/actions, and literal relationship edges with an interactive graph. External model references are explicitly marked as unresolved by this addon. Rank source symbols by bytes, physical lines or **approximate Python method complexity**. Click search results, model members or ranking rows to return to the matching source symbol in the existing file treemap. Indexing remains read-only, in-memory and does not launch Odoo. Index limits produce visible partial-results warnings rather than silently implying completeness.
 
-**Phase 8 (ready for local testing):** Adds **automatic 4-second refresh** (toggleable) and a manual **Check now** button. File additions, deletions, renames and edits refresh the existing treemap and totals while retaining the closest valid folder position; inspected files and Advanced Insights are refreshed or invalidated safely. Source lines and parser outputs are cached **in memory only**, with signature-based invalidation and bounded LRU limits. The module-wide insights result is cached by revision, while changes reassemble the logical index from unchanged cached parses. Detects same-size edits using nanosecond mtime, ctime, device and inode metadata, and recovers from backend restarts or expired snapshots. Caches do not execute analyzed code. See `scripts/benchmark_refresh.py` for reproducible synthetic measurements.
+**Phase 8 (accepted):** Adds **automatic 4-second refresh** (toggleable) and a manual **Check now** button. File additions, deletions, renames and edits refresh the existing treemap and totals while retaining the closest valid folder position; inspected files and Advanced Insights are refreshed or invalidated safely. Source lines and parser outputs are cached **in memory only**, with signature-based invalidation and bounded LRU limits. The module-wide insights result is cached by revision, while changes reassemble the logical index from unchanged cached parses. Detects same-size edits using nanosecond mtime, ctime, device and inode metadata, and recovers from backend restarts or expired snapshots. Caches do not execute analyzed code. See `scripts/benchmark_refresh.py` for reproducible synthetic measurements.
 
 ## Requirements
 
 - Python **3.10+** with pip (backend tests verified on Python 3.13; CI targets 3.10–3.13)
-- Node.js **20.19+ or 22.12+**, npm (required for JS inspection as well as the frontend)
+- Node.js **20.19+ or 22.12+** (required for JS inspection). npm is needed for source frontend development and wheel builds, but not after installing a bundled wheel
 - Windows 10/11; Linux/macOS using equivalent shell commands
 - A real addon containing `__manifest__.py` and `__init__.py`, or the included sample addon
 - **No running Odoo server or database required**

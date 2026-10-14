@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "odoo-module-explorer-backend"
 version = "0.1.0"
-description = "Local static file structure analyzer for Odoo addons"
+description = "Local static structure and Odoo semantics explorer for Odoo addons 16–19"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.115,<1",
@@ -13,6 +13,9 @@ dependencies = [
     "pydantic>=2.8,<3",
     "lxml>=5.0,<7",
 ]
+
+[project.scripts]
+odoo-explorer = "app.cli:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "httpx>=0.27,<1", "ruff>=0.7,<1"]
@@ -22,6 +25,13 @@ include = ["app*"]
 
 [tool.setuptools.package-data]
 "app.parsers" = ["*.cjs"]
+"app" = [
+    "web_dist/*", "web_dist/assets/*",
+    "vendor/typescript.js", "vendor/LICENSE.txt",
+    "demo_addon/*", "demo_addon/controllers/*", "demo_addon/models/*",
+    "demo_addon/views/*", "demo_addon/static/src/services/*",
+    "demo_addon/static/src/components/calendar_widget/*",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

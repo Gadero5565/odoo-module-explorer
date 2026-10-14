@@ -49,6 +49,7 @@ class AnalysisResult(BaseModel):
 class ConfigResponse(BaseModel):
     demo_module_path: str
     supported_versions: list[str]
+    initial_module_path: str | None = None
 
 
 class RefreshRequest(AnalyzeRequest):
