@@ -1,0 +1,11 @@
+/* Plain CSS example: non-Sass source is supported. */
+:root {
+    --calendar-border: #7c94aa;
+}
+
+@media print {
+    .o_calendar_widget {
+        border: 1px solid var(--calendar-border);
+        background: white !important;
+    }
+}

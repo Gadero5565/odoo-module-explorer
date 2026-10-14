@@ -17,6 +17,11 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install backend
         run: python -m pip install -e './backend[dev]'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install JavaScript grammar dependency
+        run: npm ci --prefix frontend
       - name: Backend tests
         run: python -m pytest backend/tests -q
       - name: Static checks

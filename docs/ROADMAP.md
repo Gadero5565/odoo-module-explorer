@@ -7,10 +7,10 @@ Target Odoo versions: **16, 17, 18, 19**. Standalone local application first; ed
 | 1 | Scanner + treemap | Select an addon, see sizes/counts/lines, drill into folders, inspect files, rank and filter, tests pass |
 | 2 | Python syntax parser | Click Python files to view nested classes, functions, methods, decorators and sizes |
 | 3 | Odoo Python semantics | Detect models and inheritance, fields, computed methods, controller routes, constraints; **accepted and pushed** |
-| 4 | XML & QWeb | Parse views, records, actions, menus, inheritance, XPath, and QWeb templates; **ready for local acceptance** |
-| 5 | JS & OWL | JS classes, functions, component/template links, services and registrations |
-| 6 | SCSS/CSS | Selectors, variables, mixins, rules and file metrics |
-| 7 | Advanced exploration | Odoo logical models, cross references, search, additional metrics, graph views |
+| 4 | XML & QWeb | Parse views, records, actions, menus, inheritance, XPath, and QWeb templates; **accepted and pushed** |
+| 5 | JS & OWL | JS classes, functions, OWL template references, hooks, services, and registry declarations; **accepted and pushed** |
+| 6 | SCSS/CSS | Selectors, variables, mixins, rules and file metrics; **accepted and pushed** |
+| 7 | Advanced exploration | Global source search, logical model grouping, static model relationships/graph, source jump, ranking by size/lines/complexity; **ready for local acceptance** |
 | 8 | Watch & performance | Incremental rescans, caching, robustness, security regression and performance tests |
 | 9 | Packaging | Standalone CLI launcher, bundled frontend, documentation and first release |
 | E1 | VS Code extension | Webview, analyze active addon, source jump navigation |
@@ -19,6 +19,38 @@ Target Odoo versions: **16, 17, 18, 19**. Standalone local application first; ed
 ### Release rule
 
 Do not push a phase before the user runs and accepts it locally. Keep automated checks passing before every commit.
+
+### Phase 7 manual acceptance checklist
+
+- [ ] Open the sample addon, choose **Advanced Insights**, and confirm indexed symbols and Odoo model counts.
+- [ ] Global search locates Odoo fields, methods, XML views, JS/OWL and SCSS; filters work across kinds and model associations.
+- [ ] Click a search result from a nested method/field/template: the file explorer opens at the correct source location and the appropriate inspector updates.
+- [ ] In **Odoo models**, verify definition/extension grouping, fields, methods, views and actions for `demo.calendar.edition` and `demo.calendar.day`.
+- [ ] Check relation graph and source edges; external targets are visibly unresolved (not assumed installed).
+- [ ] Rank by bytes, lines and approximate Python method complexity; verify metric semantics.
+- [ ] Analyze real `demo_odoo_module`, test malformed source and limits, recheck all previous functionality.
+- [ ] Backend `pytest -q`, frontend `npm test` and `npm run build` on Windows pass; commit/push **after approval**.
+
+### Phase 6 manual acceptance checklist
+
+- [ ] Open sample `calendar_widget.scss` and verify `$calendar-accent`, `$calendar-radius`, the `@mixin` and `@include` nodes.
+- [ ] Drill into `.o_calendar_widget`, `&:hover`, media rules and declarations, confirming source bytes/lines and breadcrumbs.
+- [ ] Open `calendar_print.css` and verify `:root`, `@media print`, custom property and `!important` declarations.
+- [ ] Inspect real SCSS source in `demo_odoo_module`, checking nested syntax/interpolation and no unintended parse failures.
+- [ ] Verify syntax errors preserve the original file's byte and line totals.
+- [ ] Regression-check Python, Odoo fields, XML/QWeb and JS/OWL navigation.
+- [ ] Run backend `pytest -q`, frontend `npm test` and `npm run build` on Windows.
+- [ ] Push Phase 6 to `main` **only after approval**.
+
+### Phase 5 manual acceptance checklist
+
+- [ ] Open sample JS `static/src/components/calendar_widget/calendar_widget.js`; verify `CalendarWidget`, template `demo.CalendarWidget`, setup hooks, and action registration.
+- [ ] Drill into class/methods and confirm Size / Lines metrics, exact bytes, and breadcrumbs.
+- [ ] Open `static/src/services/calendar_state.js`; verify service, dependencies, `start()` and registry key.
+- [ ] Test real `demo_odoo_module` OWL JS components and confirm reasonable parsing.
+- [ ] Test malformed JS, file path validation, and previous Python/XML behavior.
+- [ ] Run backend `pytest -q`, frontend `npm test`, and `npm run build` locally.
+- [ ] Push to `main` **only after approval**.
 
 ### Phase 4 manual acceptance checklist
 

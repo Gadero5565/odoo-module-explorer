@@ -107,3 +107,63 @@ a { color: inherit; text-decoration: none; }
 
 /* XML metadata can contain long XPath expressions and dotted identifiers. */
 .detail-stat strong { min-width: 0; overflow-wrap: anywhere; }
+
+/* Phase 7 — module-wide symbol index, model relationships and ranking insights */
+.workspace-mode { display: flex; gap: 5px; background: #0d1725; border-bottom: 1px solid #29394e; padding: 9px 25px; }
+.workspace-mode button { display: flex; gap: 9px; align-items: center; border: 1px solid transparent; padding: 10px 16px; border-radius: 7px; background: transparent; color: #879eb8; font-size: 12px; font-weight: 700; }
+.workspace-mode button.selected { background: #1d3a5a; color: #cae6ff; border-color: #37628c; }
+.workspace-mode button:hover { color: #e8f4ff; }
+.insights-panel { width: min(1330px, 100%); margin: 0 auto; padding: 22px 28px 55px; min-height: 530px; }
+.insight-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 22px; }
+.insight-heading h2 { font-size: 21px; margin: 0 0 8px; }
+.insight-heading p { font-size: 12px; color: #97aec7; line-height: 1.7; margin: 0; }
+.insight-stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.insight-stats span { display: inline-flex; align-items: center; gap: 8px; background: #17273a; padding: 12px 15px; border: 1px solid #31475f; border-radius: 8px; font: 11px 'Cascadia Code', Consolas, monospace; color: #b6d0e7; }
+.insight-tabs { display: flex; overflow-x: auto; gap: 4px; border-bottom: 1px solid #2c435b; margin-top: 8px; }
+.insight-tabs button { white-space: nowrap; border: 0; background: transparent; color: #8ca6c0; padding: 13px 17px; border-bottom: 2px solid transparent; font-size: 12px; font-weight: 650; }
+.insight-tabs button.active { border-color: #4c9bf7; color: #e5f3ff; background: #172b41; }
+.insight-section { padding-top: 23px; }
+.insight-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.insight-controls select { max-width: 290px; min-width: 170px; background: #172436; border: 1px solid #36506a; border-radius: 7px; padding: 10px; color: #d1e0f2; font-size: 12px; }
+.insight-search { display: flex; flex: 1 1 260px; align-items: center; gap: 9px; background: #152235; color: #92b5d8; border: 1px solid #36506a; border-radius: 7px; padding: 0 12px; height: 41px; }
+.insight-search input { border: 0; background: transparent; color: #dceaf8; min-width: 0; flex: 1; outline: 0; font-size: 12px; }
+.insight-model-select { display: flex; gap: 11px; align-items: center; color: #a6bbd0; font-size: 12px; }
+.insight-model-select select { min-width: min(350px, 65vw); }
+.insight-muted { color: #819bb5; display: flex; align-items: center; gap: 7px; font-size: 11px; line-height: 1.65; margin: 11px 0; }
+.insight-results { border: 1px solid #283e53; border-radius: 9px; overflow: hidden; max-height: 590px; overflow-y: auto; }
+.insight-results .insight-muted { padding: 14px; }
+.insight-result { display: flex; gap: 13px; align-items: center; background: #111e2d; border: 0; border-bottom: 1px solid #2a394b; width: 100%; min-height: 60px; padding: 10px 14px; text-align: left; color: #b2cbdf; }
+.insight-result:last-child { border-bottom: 0; }
+.insight-result:hover { background: #20374e; }
+.insight-symbol-kind { flex: 0 0 112px; color: #9ad4ce; font: 10px/1.4 'Cascadia Code', Consolas, monospace; text-transform: uppercase; overflow-wrap: anywhere; }
+.insight-result-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.insight-result-body strong { font-size: 12px; color: #e3efff; overflow-wrap: anywhere; }
+.insight-result-body small { font: 10px/1.5 'Cascadia Code', Consolas, monospace; color: #819bb3; overflow-wrap: anywhere; }
+.insight-metric { text-align: right; flex: 0 0 88px; color: #a3c0db; font: 11px 'Cascadia Code', Consolas, monospace; }
+.insight-model-summary { background: #16283a; border: 1px solid #31516e; padding: 18px; border-radius: 9px; margin: 17px 0; }
+.insight-model-summary h3 { font: 700 17px 'Cascadia Code', Consolas, monospace; margin: 0 0 9px; }
+.insight-model-summary > span { color: #93b9d9; font-size: 11px; }
+.insight-model-counts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
+.insight-model-counts b { background: #203c55; color: #bfd9f1; padding: 8px 12px; border-radius: 6px; font-size: 11px; }
+.insight-model-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px,1fr)); gap: 20px; }
+.insight-model-group { min-width: 0; }
+.insight-model-group h3, .insight-subtitle { margin: 12px 0; font-size: 13px; color: #d4e7f9; }
+.insight-model-group h3 small { color: #82a3c1; margin-left: 6px; }
+.insight-control-title { display: flex; align-items: center; gap: 7px; color: #b3cbe0; font-size: 12px; }
+.relationship-graph { background: #111e2d; border: 1px solid #30475e; border-radius: 9px; margin-bottom: 20px; padding: 8px; }
+.relationship-graph svg { width: 100%; display: block; max-height: 390px; }
+.graph-node { cursor: pointer; outline-offset: 3px; }
+.graph-node:hover rect, .graph-node:focus rect { stroke: #fff; stroke-width: 2; }
+.insight-link { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-bottom: 1px solid #2b4053; color: #8ab6de; }
+.insight-link > div { display: flex; flex: 1; flex-direction: column; gap: 5px; min-width: 0; }
+.insight-link strong { color: #d7e9f7; font-size: 12px; overflow-wrap: anywhere; }
+.insight-link small { color: #86a2bc; font: 10px 'Cascadia Code', Consolas, monospace; overflow-wrap: anywhere; }
+.insight-link button { display: flex; align-items: center; gap: 4px; border: 1px solid #345473; background: #20364d; color: #b0d3f4; border-radius: 5px; padding: 8px; font-size: 11px; }
+.insight-warnings { color: #e9ba80; font-size: 11px; border: 1px solid #57402a; background: #2b251e; border-radius: 8px; padding: 12px; margin-bottom: 15px; }
+.insight-warnings summary { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.insight-warnings p { color: #cda77b; font: 10px/1.7 'Cascadia Code', Consolas, monospace; overflow-wrap: anywhere; }
+.insight-empty { display: flex; align-items: center; text-align: center; flex-direction: column; gap: 11px; background: #132235; border: 1px solid #304962; border-radius: 12px; padding: 65px 24px; color: #8fbce7; }
+.insight-empty h3 { color: #e4f1ff; font-size: 18px; margin: 10px 0 0; }
+.insight-empty p { font-size: 12px; color: #94b1ce; line-height: 1.7; max-width: 570px; }
+.insight-message { display: flex; gap: 10px; align-items: center; color: #9bc3ed; padding: 20px 0; font-size: 12px; }
+@media (max-width: 690px) { .insights-panel { padding: 18px 13px; }.insight-heading { flex-wrap: wrap; }.insight-model-groups { grid-template-columns: 1fr; }.insight-symbol-kind { flex-basis: 65px; }.insight-metric { flex-basis: 65px; }.insight-result { gap: 7px; padding: 10px 8px; } }

@@ -12,6 +12,8 @@ from app.parsers.style_parser import MAX_STYLE_BYTES, StyleInspectionError, insp
 from app.parsers.python_parser import MAX_PYTHON_BYTES, PythonInspectionError, inspect_python_source
 from app.parsers.xml_parser import MAX_XML_BYTES, XMLInspectionError, inspect_xml_source
 from app.schemas.analysis import AnalysisResult, AnalyzeRequest, ConfigResponse, ModuleDetails
+from app.schemas.insights import InsightRequest, InsightsResponse
+from app.services.insights import build_insights
 from app.schemas.js_inspection import JSInspectRequest, JSInspection
 from app.schemas.python_inspection import PythonInspectRequest, PythonInspection
 from app.schemas.style_inspection import StyleInspectRequest, StyleInspection
@@ -23,7 +25,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 @router.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "phase": "6"}
+    return {"status": "ok", "phase": "7"}
 
 
 @router.get("/config", response_model=ConfigResponse)
@@ -102,3 +104,16 @@ def inspect_styles(request: StyleInspectRequest) -> StyleInspection:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except OSError as exc:
         raise HTTPException(status_code=400, detail='Could not read stylesheet source file.') from exc
+
+
+@router.post('/insights', response_model=InsightsResponse)
+def inspect_module_insights(request: InsightRequest) -> InsightsResponse:
+    """Build a bounded, searchable source index for the selected local addon."""
+    try:
+        root = resolve_module_path(request.module_path.strip())
+        inspect_module(root, request.version_override)
+        return build_insights(root)
+    except AnalysisError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except OSError as exc:
+        raise HTTPException(status_code=400, detail='Unable to read module source files.') from exc

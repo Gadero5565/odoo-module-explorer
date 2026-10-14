@@ -95,3 +95,39 @@ test('XML symbols are indexed with correct ancestor breadcrumbs and metrics', ()
   assert.equal(nodeColor(xpath), '#e59588');
   assert.equal(nodeColor(file), '#5ac8ad');
 });
+
+
+test('JavaScript/OWL symbols support breadcrumb paths, colors and physical metrics', () => {
+  const { indexJSSymbols, jsSymbolPath, metricValue, nodeColor } = runtimeModule.exports;
+  const setup = { id: 'widget.js::class:C@1::method:setup@20', name: 'setup', kind: 'method',
+    size_bytes: 75, line_count: 5, metadata: { hooks: ['useState'] }, children: [] };
+  const component = { id: 'widget.js::class:C@1', name: 'C', kind: 'class', size_bytes: 240,
+    line_count: 20, metadata: { is_owl_component: true, template: 'demo.C' }, children: [setup] };
+  const file = { id: 'widget.js', name: 'widget.js', kind: 'file', size_bytes: 300,
+    line_count: 25, metadata: {}, children: [component] };
+  assert.equal(indexJSSymbols(file).get(setup.id).name, 'setup');
+  assert.deepEqual(jsSymbolPath(file, setup.id).map(node => node.name), ['widget.js', 'C', 'setup']);
+  assert.equal(metricValue(setup, 'size_bytes'), 75);
+  assert.equal(metricValue(setup, 'file_count'), 0);
+  assert.equal(nodeColor(component), '#af8bea');
+  assert.equal(nodeColor({ ...component, kind: 'service' }), '#e9aa62');
+});
+
+
+test('Stylesheet nodes have stable index, breadcrumbs, colors and size metrics', () => {
+  const { indexStyleSymbols, styleSymbolPath, metricValue, nodeColor } = runtimeModule.exports;
+  const declaration = { id: 'a.scss::style:50:70', name: 'color', kind: 'declaration',
+    relative_path: 'a.scss', size_bytes: 20, line_count: 1, metadata: { prelude: 'color: red' }, children: [] };
+  const selector = { id: 'a.scss::style:20:80', name: '.item', kind: 'selector',
+    relative_path: 'a.scss', size_bytes: 60, line_count: 3,
+    metadata: { prelude: '.item', selector: '.item' }, children: [declaration] };
+  const root = { id: 'a.scss', name: 'a.scss', kind: 'file', relative_path: 'a.scss',
+    size_bytes: 100, line_count: 5, metadata: { prelude: null }, children: [selector] };
+  assert.equal(indexStyleSymbols(root).get(declaration.id).name, 'color');
+  assert.deepEqual(styleSymbolPath(root, declaration.id).map(node => node.name), ['a.scss', '.item', 'color']);
+  assert.equal(metricValue(selector, 'size_bytes'), 60);
+  assert.equal(metricValue(selector, 'file_count'), 0);
+  assert.equal(nodeColor(selector), '#e7a64f');
+  assert.equal(nodeColor({ ...selector, kind: 'variable' }), '#ce88da');
+  assert.equal(nodeColor(root), '#e3a85d');
+});

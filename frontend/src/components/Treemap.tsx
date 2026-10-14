@@ -4,17 +4,19 @@ import type { EChartsOption } from 'echarts';
 import type { FileNode, Metric } from '../types/analysis';
 import type { PythonSymbol } from '../types/python';
 import type { XMLSymbol } from '../types/xml';
+import type { JSSymbol } from '../types/javascript';
+import type { StyleSymbol } from '../types/styles';
 import { formatBytes, formatNumber, metricValue, nodeColor, sizeMetric } from '../lib/analysis';
 
 type Props = {
-  folder: FileNode | PythonSymbol | XMLSymbol;
+  folder: FileNode | PythonSymbol | XMLSymbol | JSSymbol | StyleSymbol;
   metric: Metric;
   selectedId: string;
-  onSelect: (node: FileNode | PythonSymbol | XMLSymbol) => void;
+  onSelect: (node: FileNode | PythonSymbol | XMLSymbol | JSSymbol | StyleSymbol) => void;
 };
 
 export default function Treemap({ folder, metric, selectedId, onSelect }: Props) {
-  const nodes = useRef(new Map<string, FileNode | PythonSymbol | XMLSymbol>());
+  const nodes = useRef(new Map<string, FileNode | PythonSymbol | XMLSymbol | JSSymbol | StyleSymbol>());
   nodes.current = new Map(folder.children.map(node => [node.id, node]));
 
   const option = useMemo<EChartsOption>(() => ({

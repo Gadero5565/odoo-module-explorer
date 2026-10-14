@@ -1,5 +1,22 @@
+// Demo only: this showcases Phase 6 SCSS structural inspection.
+$calendar-accent: #347dba;
+$calendar-radius: 8px !default;
+
+@mixin calendar-padding($space: 16px) {
+    padding: $space;
+    border-radius: $calendar-radius;
+}
+
 .o_calendar_widget {
-    padding: 16px;
-    border-radius: 8px;
+    @include calendar-padding();
     background: #eff6ff;
+    color: $calendar-accent;
+
+    &:hover {
+        background: #e3efff;
+    }
+
+    @media (max-width: 768px) {
+        @include calendar-padding(8px);
+    }
 }
