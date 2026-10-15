@@ -22,6 +22,17 @@ The browser opens at **http://127.0.0.1:7764** while the terminal stays running.
 
 If you installed the wheel in **another virtual environment** (such as `.release-venv` inside a source checkout), run the `odoo-explorer.exe` in **that** environment instead. See **[Start the application again](docs/INSTALLATION.md#start-the-application-again)** for all supported installation layouts and an optional Windows desktop shortcut. Stop the server with `Ctrl+C`.
 
+## Screenshots
+
+### Interactive Module Explorer
+![Module Explorer](docs/images/treemap-overview.png)
+
+### Python and Odoo Model Inspector
+![Python Inspector](docs/images/python-inspector.png)
+
+### Advanced Insights
+![Advanced Insights](docs/images/advanced-insights.png)
+
 ## Features
 
 - **Interactive treemap:** navigate directories, files, classes, methods and source elements by physical bytes, lines or other applicable metrics.
