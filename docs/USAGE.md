@@ -18,6 +18,17 @@ The browser opens at **http://127.0.0.1:7764**. Leave the terminal open while us
 
 After starting the app, enter an addon directory in the web interface, or pass its path as an argument to the launcher. The directory must contain `__manifest__.py`. Use **Explore sample module** to try a synthetic example.
 
+## Choose an analysis profile
+
+The **Analysis profile** selector at the top controls what the *backend* scans:
+
+- **Odoo Source** (default): focuses on application source, excluding recognized vendor folders (`static/lib/`, `static/src/lib/`), description folders, minified JavaScript/CSS, and source maps. These exclusions reduce scanner and refresh work and prevent bundled libraries from inflating source statistics.
+- **All Files**: shows physical addon file sizes, including bundled third-party assets and description images (standard machine caches and symlinks remain excluded for safety). Source-line counting large libraries may take longer.
+
+Switching profiles scans the current addon again and updates file counts and sizes. The statistic cards always describe the *current profile*. The excluded-path count represents skipped entry roots, not every file in a skipped directory. **Advanced Insights ignores recognized vendor assets in both profiles**, to avoid attributing third-party symbols to your Odoo addon.
+
+See [Analysis profiles](ANALYSIS_PROFILES.md) for the exact exclusions and refresh behavior.
+
 ## Browse the treemap
 
 Click a folder to inspect its contents; click a supported source file to inspect its internal structure. Breadcrumbs return to parent nodes. Where available, change ranking and area metrics between source bytes, physical lines, symbol counts and complexity estimates.

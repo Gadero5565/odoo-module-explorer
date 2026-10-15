@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 
+from app.core.analysis_policy import DEFAULT_PROFILE, AnalysisProfile, excluded_from_scan
 from app.schemas.analysis import FileNode, ScanWarning
 
 # Never count machine-generated caches, repositories or dependencies as addon sources.
@@ -53,8 +54,10 @@ def _line_count(path: Path) -> int:
 
 
 class DirectoryScanner:
-    def __init__(self, root: Path, line_counter=None):
+    def __init__(self, root: Path, line_counter=None, profile: AnalysisProfile = DEFAULT_PROFILE):
         self.root = root
+        self.profile = profile
+        self.excluded_entries = 0
         self.line_counter = line_counter or (lambda path, stat: _line_count(path))
         self.fingerprints: dict[str, tuple[int, ...]] = {}
         self.warnings: list[ScanWarning] = []
@@ -94,6 +97,9 @@ class DirectoryScanner:
                     self._warn(rel, "Skipped symbolic link")
                     continue
                 if entry.is_dir(follow_symlinks=False):
+                    if excluded_from_scan(rel, directory=True, profile=self.profile):
+                        self.excluded_entries += 1
+                        continue
                     if entry.name in IGNORED_DIRECTORIES:
                         self.ignored_entries += 1
                         continue
@@ -102,6 +108,9 @@ class DirectoryScanner:
                         raise AnalysisError(f"Module exceeds {MAX_ENTRIES:,} scanned entries.")
                     child = self._directory(Path(entry.path), rel, depth + 1)
                 elif entry.is_file(follow_symlinks=False):
+                    if excluded_from_scan(rel, directory=False, profile=self.profile):
+                        self.excluded_entries += 1
+                        continue
                     if entry.name in IGNORED_FILES:
                         self.ignored_entries += 1
                         continue

@@ -183,3 +183,8 @@ a { color: inherit; text-decoration: none; }
 .python-filter-summary strong { color: #e5f2ff; }
 .python-filter-summary button { background: none; color: #7bbaff; border: 0; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; }
 .python-filter-summary button:hover { color: #c3e4ff; }
+
+/* Phase 11: label the active analysis scope, not a cosmetic tree filter. */
+.analysis-scope { margin: 0 26px 12px; padding: 8px 12px; border: 1px solid #304761; border-radius: 8px; color: #9db5ce; background: #132234; font-size: 11px; line-height: 1.6; }
+.analysis-scope strong { color: #b9daff; }
+@media (max-width: 760px) { .analysis-scope { margin: 0 12px 12px; } }

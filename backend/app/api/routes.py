@@ -53,7 +53,7 @@ def analyze(request: AnalyzeRequest) -> AnalysisResult:
     try:
         path = resolve_module_path(request.module_path.strip())
         info = inspect_module(path, request.version_override)
-        result, fingerprints = cache.scan(path, info)
+        result, fingerprints = cache.scan(path, info, request.analysis_profile)
         cache.remember(path, result.revision, fingerprints)
         return result
     except AnalysisError as exc:
@@ -121,7 +121,7 @@ def inspect_module_insights(request: InsightRequest) -> InsightsResponse:
     try:
         root = resolve_module_path(request.module_path.strip())
         inspect_module(root, request.version_override)
-        analysis, fingerprints = cache.scan(root, inspect_module(root, request.version_override))
+        analysis, fingerprints = cache.scan(root, inspect_module(root, request.version_override), request.analysis_profile)
         cache.remember(root, analysis.revision, fingerprints)
         return cache.get_insights(root, analysis.revision, lambda: build_insights(
             root, tree=analysis.root, parse_cache=cache, scan_warnings=analysis.warnings,
@@ -142,7 +142,7 @@ def refresh_module(request: RefreshRequest) -> RefreshResult:
     try:
         root = resolve_module_path(request.module_path.strip())
         info = inspect_module(root, request.version_override)
-        result, fingerprints = cache.scan(root, info)
+        result, fingerprints = cache.scan(root, info, request.analysis_profile)
         changed = result.revision != request.previous_revision
         paths, truncated = cache.changes(root, request.previous_revision, fingerprints) if changed else ([], False)
         cache.remember(root, result.revision, fingerprints)

@@ -21,12 +21,16 @@ export type ModuleDetails = {
   application: boolean | null;
 };
 
+export type AnalysisProfile = 'odoo_source' | 'all_files';
+
 export type AnalysisResult = {
   module: ModuleDetails;
   root: FileNode;
   revision: string;
   warnings: { relative_path: string; reason: string }[];
   ignored_entries: number;
+  analysis_profile: AnalysisProfile;
+  excluded_entries: number;
 };
 
 export type Metric = 'size_bytes' | 'file_count' | 'line_count';

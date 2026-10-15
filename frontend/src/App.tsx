@@ -13,7 +13,7 @@ import JSDetails from './components/JSDetails';
 import StyleDetails from './components/StyleDetails';
 import InsightsPanel from './components/InsightsPanel';
 import { filterTree, formatBytes, formatNumber, metricValue, indexNodes, indexPythonSymbols, filterPythonSymbols, nearestVisiblePythonId, pythonScopeMetrics, DEFAULT_PYTHON_VISIBILITY, indexXMLSymbols, indexJSSymbols, indexStyleSymbols, parentId, nearestExistingId, pythonSymbolPath, xmlSymbolPath, jsSymbolPath, styleSymbolPath } from './lib/analysis';
-import type { AnalysisResult, DisplayFilters, FileNode, Metric, RefreshResponse } from './types/analysis';
+import type { AnalysisProfile, AnalysisResult, DisplayFilters, FileNode, Metric, RefreshResponse } from './types/analysis';
 import type { PythonInspection, PythonSymbol } from './types/python';
 import type { PythonVisibility } from './lib/analysis';
 import type { XMLInspection, XMLSymbol } from './types/xml';
@@ -33,6 +33,8 @@ export default function App() {
   const [demoPath, setDemoPath] = useState('');
   const [versionOverride, setVersionOverride] = useState('');
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [analysisProfile, setAnalysisProfile] = useState<AnalysisProfile>('odoo_source');
+  const analysisRequestId = useRef(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<DisplayFilters>(DEFAULT_FILTERS);
@@ -85,19 +87,22 @@ export default function App() {
       .catch(() => { /* backend unavailable message appears on submission */ });
   }, []);
 
-  const runAnalysis = useCallback(async (path: string) => {
+  const runAnalysis = useCallback(async (path: string, profile: AnalysisProfile = analysisProfile) => {
+    const requestId = ++analysisRequestId.current;
     if (!path.trim()) { setError('Enter the full path to an Odoo module directory.'); return; }
     setLoading(true); setError(null);
     try {
       const response = await fetch('/api/analyze', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ module_path: path.trim(), version_override: versionOverride || null }),
+        body: JSON.stringify({ module_path: path.trim(), version_override: versionOverride || null,
+          analysis_profile: profile }),
       });
       const payload = await response.json();
       if (!response.ok) {
         const detail = payload?.detail;
         throw new Error(typeof detail === 'string' ? detail : 'Analysis failed. Check the selected path and try again.');
       }
+      if (requestId !== analysisRequestId.current) return;
       setResult(payload as AnalysisResult);
       setSyncMessage('Up to date'); setChangedPaths([]);
       setCurrentId('.'); setSelectedId('.'); setSearch(''); setFilters(DEFAULT_FILTERS); setPythonVisibility(DEFAULT_PYTHON_VISIBILITY);
@@ -113,9 +118,10 @@ export default function App() {
       setInsights(null); setInsightsError(null); setInsightsLoading(false); setPendingJump(null);
       setWorkspaceMode('explorer');
     } catch (err) {
+      if (requestId !== analysisRequestId.current) return;
       setError(err instanceof TypeError ? 'Could not connect to the local analysis API. Check that the server is running.' : (err as Error).message);
-    } finally { setLoading(false); }
-  }, [versionOverride]);
+    } finally { if (requestId === analysisRequestId.current) setLoading(false); }
+  }, [versionOverride, analysisProfile]);
 
   /** Refresh checks file signatures, and preserves folder navigation when possible. */
   const refreshModule = useCallback(async (signal?: AbortSignal, manual = false) => {
@@ -125,7 +131,8 @@ export default function App() {
       const response = await fetch('/api/refresh', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
         body: JSON.stringify({ module_path: result.module.absolute_path,
-          version_override: versionOverride || null, previous_revision: result.revision }),
+          version_override: versionOverride || null, analysis_profile: result.analysis_profile,
+          previous_revision: result.revision }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.detail || 'Refresh check failed.');
@@ -261,7 +268,8 @@ export default function App() {
     try {
       const response = await fetch('/api/insights', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ module_path: result.module.absolute_path, version_override: versionOverride || null }),
+        body: JSON.stringify({ module_path: result.module.absolute_path, version_override: versionOverride || null,
+          analysis_profile: result.analysis_profile }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.detail || 'Module-wide indexing failed.');
@@ -458,7 +466,7 @@ export default function App() {
   }, [currentFolder, result, pythonFilePath, pythonInspection, currentPython, xmlFilePath, xmlInspection, currentXML, jsFilePath, jsInspection, currentJS, styleFilePath, styleInspection, currentStyle]);
 
   const statCards = result ? [
-    { label: 'TOTAL SIZE', value: formatBytes(result.root.size_bytes), icon: HardDrive },
+    { label: result.analysis_profile === 'odoo_source' ? 'ANALYZED SIZE' : 'PHYSICAL SIZE', value: formatBytes(result.root.size_bytes), icon: HardDrive },
     { label: 'FILES', value: formatNumber(result.root.file_count), icon: File },
     { label: 'FOLDERS', value: formatNumber(result.root.directory_count), icon: Folder },
     { label: 'SOURCE LINES', value: formatNumber(result.root.line_count), icon: Code2 },
@@ -473,6 +481,16 @@ export default function App() {
     <section className="input-bar">
       <div className="input-container">
         <div className="path-input-wrap"><FolderOpen size={19}/><input aria-label="Odoo module directory" value={modulePath} onChange={event => setModulePath(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void runAnalysis(modulePath); }} placeholder="Enter module path, e.g. C:\\odoo\\custom_addons\\my_addon" /></div>
+        <select aria-label="Analysis profile" value={analysisProfile} disabled={loading}
+          title="Odoo Source skips recognized third-party assets; All Files shows physical addon contents"
+          onChange={event => {
+            const profile = event.target.value as AnalysisProfile;
+            setAnalysisProfile(profile);
+            if (result) void runAnalysis(result.module.absolute_path, profile);
+          }}>
+          <option value="odoo_source">Odoo Source</option>
+          <option value="all_files">All Files</option>
+        </select>
         <select aria-label="Odoo version override" value={versionOverride} onChange={event => setVersionOverride(event.target.value)} title="Leave Auto to read version from manifest"><option value="">Version: Auto</option>{['16','17','18','19'].map(v => <option value={v} key={v}>Odoo {v}</option>)}</select>
         <button className="primary-button" disabled={loading} onClick={() => void runAnalysis(modulePath)}>{loading ? <LoaderCircle size={17} className="spin"/> : <BarChart3 size={17}/>} {loading ? 'Analyzing…' : 'Analyze Module'}</button>
       </div>
@@ -497,6 +515,12 @@ export default function App() {
         <span className="refresh-status" role="status" title={changedPaths.join(', ') || 'Filesystem scan status'}>{syncMessage}</span>
         <button className="refresh-button" onClick={() => void refreshModule(undefined, true)} disabled={loading || manualRefreshing} title="Check for changes now"><RefreshCcw size={16} className={manualRefreshing ? 'spin' : ''}/> Check now</button>
       </div></div>
+      <div className="analysis-scope" role="status">
+        <strong>{result.analysis_profile === 'odoo_source' ? 'Odoo Source' : 'All Files'}</strong>
+        {result.analysis_profile === 'odoo_source'
+          ? ` · ${result.excluded_entries} vendor/description paths excluded from scanning and statistics. Switch to All Files for physical sizes.`
+          : ' · Physical addon files shown. Known third-party bundles are omitted from semantic Insights.'}
+      </div>
       <div className="stat-strip">{statCards.map(stat => <div className="stat-item" key={stat.label}><div className="stat-icon"><stat.icon size={19}/></div><div><div className="stat-label">{stat.label}</div><div className="stat-value">{stat.value}</div></div></div>)}</div>
       <div className="workspace-mode" role="group" aria-label="Explorer view">
         <button className={workspaceMode === 'explorer' ? 'selected' : ''} onClick={() => setWorkspaceMode('explorer')}><Layers3 size={15}/> File Explorer</button>
@@ -513,7 +537,7 @@ export default function App() {
 
         <main className="main-panel">
           <div className="explorer-toolbar"><div className="breadcrumbs">{crumbs.map((crumb, i) => <span key={crumb.id} className="crumb-wrap">{i > 0 && <ChevronRight size={15}/>}<button className={i === crumbs.length - 1 ? 'active-crumb' : ''} onClick={() => navigate(crumb.id)} title={crumb.id}>{crumb.name}</button></span>)}</div><div className="toolbar-actions"><div className="metric-group" role="group" aria-label="Treemap metric">{METRIC_OPTIONS.filter(option => !viewingStructure || option.key !== 'file_count').map(option => <button key={option.key} className={effectiveMetric === option.key ? 'metric-active' : ''} onClick={() => setMetric(option.key)}>{option.label}</button>)}</div><div className="filter-holder"><button className={`icon-button ${filters.sourceOnly || filters.excludeData || (viewingPython && (pythonVisibility.showFields || pythonVisibility.showOtherCode)) ? 'filter-active' : ''}`} title="Display filters" aria-label="Display filters" onClick={() => setFilterOpen(!filterOpen)}><SlidersHorizontal size={17}/></button>{filterOpen && <div className="filter-popover"><strong>Display filters</strong><label><input type="checkbox" checked={filters.sourceOnly} onChange={e => setFilters(s => ({...s, sourceOnly: e.target.checked}))}/> Source code files only</label><label><input type="checkbox" checked={filters.excludeData} onChange={e => setFilters(s => ({...s, excludeData: e.target.checked}))}/> Hide data, demo and i18n folders</label>{viewingPython && <><div className="filter-divider"/><strong>Python symbols</strong><label><input type="checkbox" checked={pythonVisibility.showFields} onChange={e => setPythonVisibility(s => ({...s, showFields: e.target.checked}))}/> Show Odoo field declarations</label><label><input type="checkbox" checked={pythonVisibility.showOtherCode} onChange={e => setPythonVisibility(s => ({...s, showOtherCode: e.target.checked}))}/> Show other code / declarations</label></>}<small>Filtering changes visible rectangles, rankings and scope counts, not physical source sizes or the module-wide statistics.</small></div>}</div></div></div>
-          <div className="view-heading"><div><div className="view-title">{viewingStructure ? (displayedNode?.name || 'Source structure') : currentFolder?.id === '.' ? 'Module overview' : currentFolder?.name || 'Folder'} <span className="view-pill">{viewingStructure ? (currentStyle?.kind || currentJS?.kind || currentXML?.kind || currentPython?.kind || 'SOURCE').toUpperCase().replaceAll('_', ' ') : 'DIRECTORY'}</span></div><div className="view-sub">{viewingStructure ? 'Click any source node to drill down · Physical source spans' : 'Click any rectangle to explore'} · Ranked by {effectiveMetric === 'size_bytes' ? 'size' : effectiveMetric === 'file_count' ? 'file count' : 'line count'}</div></div><div className="view-tally">{viewingStyles ? `${styleInspection?.selector_count || 0} selectors · ${styleInspection?.declaration_count || 0} declarations · ${styleInspection?.variable_count || 0} variables · ${styleInspection?.mixin_count || 0} mixins` : viewingJS ? `${jsInspection?.symbol_count || 0} symbols · ${jsInspection?.component_count || 0} OWL components · ${jsInspection?.registration_count || 0} registries` : viewingXML ? `${xmlInspection?.element_count || 0} elements · ${xmlInspection?.view_count || 0} views · ${xmlInspection?.xpath_count || 0} XPath` : viewingPython ? `${pythonScope?.visibleCount || 0} shown · ${pythonScope?.hiddenCount || 0} hidden · ${formatBytes(pythonScope?.visibleBytes || 0)} visible` : `${formatNumber(currentFolder?.file_count || 0)} files`} <span>·</span> {formatBytes(displayedNode?.size_bytes || 0)} source</div></div>
+          <div className="view-heading"><div><div className="view-title">{viewingStructure ? (displayedNode?.name || 'Source structure') : currentFolder?.id === '.' ? 'Module overview' : currentFolder?.name || 'Folder'} <span className="view-pill">{viewingStructure ? (currentStyle?.kind || currentJS?.kind || currentXML?.kind || currentPython?.kind || 'SOURCE').toUpperCase().replaceAll('_', ' ') : 'DIRECTORY'}</span></div><div className="view-sub">{viewingStructure ? 'Click any source node to drill down · Physical source spans' : 'Click any rectangle to explore'} · Ranked by {effectiveMetric === 'size_bytes' ? 'size' : effectiveMetric === 'file_count' ? 'file count' : 'line count'}</div></div><div className="view-tally">{viewingStyles ? `${styleInspection?.selector_count || 0} selectors · ${styleInspection?.declaration_count || 0} declarations · ${styleInspection?.variable_count || 0} variables · ${styleInspection?.mixin_count || 0} mixins` : viewingJS ? `${jsInspection?.symbol_count || 0} symbols · ${jsInspection?.component_count || 0} OWL components · ${jsInspection?.registration_count || 0} registries` : viewingXML ? `${xmlInspection?.element_count || 0} elements · ${xmlInspection?.view_count || 0} views · ${xmlInspection?.xpath_count || 0} XPath` : viewingPython ? `${pythonScope?.visibleCount || 0} shown · ${pythonScope?.hiddenCount || 0} hidden · ${formatBytes(pythonScope?.visibleBytes || 0)} visible` : `${formatNumber(currentFolder?.file_count || 0)} files`} <span>·</span> {formatBytes(displayedNode?.size_bytes || 0)} {viewingStructure ? 'source' : 'files'}</div></div>
           {pythonError && <div className="error-bar" role="alert"><AlertCircle size={15}/>{pythonError}</div>}
           {styleError && <div className="error-bar" role="alert"><AlertCircle size={15}/>{styleError}</div>}
           {styleInspection?.parse_error && <div className="error-bar" role="status"><AlertCircle size={15}/>{styleInspection.parse_error}. File totals remain available.</div>}

@@ -10,6 +10,7 @@ import io
 import tokenize
 from pathlib import Path
 
+from app.core.analysis_policy import is_vendor_path
 from app.core.scanner import DirectoryScanner
 from app.parsers.js_parser import MAX_JS_BYTES, JSInspectionError, inspect_js_source
 from app.parsers.python_parser import MAX_PYTHON_BYTES, inspect_python_source
@@ -126,7 +127,8 @@ def build_insights(root: Path, tree=None, parse_cache=None, scan_warnings=None) 
     for warning in (scanner.warnings if scanner is not None else (scan_warnings or [])):
         warn(f'{warning.relative_path}: {warning.reason}')
     paths = sorted((node for node in _walk([tree]) if node.kind == 'file'
-                    and node.extension in ALLOWED_EXTENSIONS), key=lambda n: n.relative_path)
+                    and node.extension in ALLOWED_EXTENSIONS
+                    and not is_vendor_path(node.relative_path)), key=lambda n: n.relative_path)
 
     for file in paths:
         if attempted_files >= MAX_FILES or bytes_seen + file.size_bytes > MAX_BYTES:

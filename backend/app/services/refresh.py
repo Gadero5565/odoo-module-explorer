@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from app.core.analysis_policy import DEFAULT_PROFILE, AnalysisProfile
 from app.core.scanner import DirectoryScanner, _line_count
 from app.schemas.analysis import AnalysisResult, ModuleDetails, ScanWarning
 
@@ -129,21 +130,22 @@ class AnalysisCache:
             return inspection, complexity
         raise OSError('Unable to inspect source file.')
 
-    def scan(self, root: Path, info: dict) -> tuple[AnalysisResult, dict[str, tuple[int, ...]]]:
-        scanner = DirectoryScanner(root, line_counter=self.line_count)
+    def scan(self, root: Path, info: dict, profile: AnalysisProfile = DEFAULT_PROFILE) -> tuple[AnalysisResult, dict[str, tuple[int, ...]]]:
+        scanner = DirectoryScanner(root, line_counter=self.line_count, profile=profile)
         tree = scanner.scan()
         fingerprints = scanner.fingerprints
-        revision = self.revision(fingerprints, scanner.ignored_entries, scanner.warnings)
+        revision = self.revision(fingerprints, scanner.ignored_entries, scanner.warnings, profile)
         result = AnalysisResult(module=ModuleDetails(**info), root=tree, revision=revision,
-                                warnings=scanner.warnings, ignored_entries=scanner.ignored_entries)
+                                warnings=scanner.warnings, ignored_entries=scanner.ignored_entries,
+                                analysis_profile=profile, excluded_entries=scanner.excluded_entries)
         return result, fingerprints
 
     @staticmethod
     def revision(fingerprints: dict[str, tuple[int, ...]], ignored: int,
-                 warnings: list[ScanWarning]) -> str:
-        # Stable across Python processes. Entries include directories + files,
-        # and include non-source files to keep aggregate physical sizes correct.
-        payload = json.dumps((sorted(fingerprints.items()), ignored,
+                 warnings: list[ScanWarning], profile: AnalysisProfile = DEFAULT_PROFILE) -> str:
+        # Profile contributes to revisions to prevent cross-profile snapshot reuse.
+        # File signatures include non-source files when the active profile retains them.
+        payload = json.dumps((profile, sorted(fingerprints.items()), ignored,
                               [(w.relative_path, w.reason) for w in warnings]),
                              separators=(',', ':'), ensure_ascii=True)
         return hashlib.sha256(payload.encode('ascii')).hexdigest()

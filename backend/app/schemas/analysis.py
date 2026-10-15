@@ -4,10 +4,13 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.core.analysis_policy import DEFAULT_PROFILE, AnalysisProfile
+
 
 class AnalyzeRequest(BaseModel):
     module_path: str = Field(min_length=1, max_length=4096)
     version_override: Literal["16", "17", "18", "19"] | None = None
+    analysis_profile: AnalysisProfile = DEFAULT_PROFILE
 
 
 class FileNode(BaseModel):
@@ -44,6 +47,8 @@ class AnalysisResult(BaseModel):
     revision: str = ""
     warnings: list[ScanWarning] = Field(default_factory=list)
     ignored_entries: int = 0
+    analysis_profile: AnalysisProfile = DEFAULT_PROFILE
+    excluded_entries: int = 0
 
 
 class ConfigResponse(BaseModel):

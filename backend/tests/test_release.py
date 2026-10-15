@@ -42,6 +42,8 @@ def test_packager_checks_prebuilt_asset_completeness(tmp_path):
     (demo / '__manifest__.py').write_text("{'name': 'Demo'}")
     (frontend / 'dist' / 'assets').mkdir(parents=True)
     (frontend / 'dist' / 'index.html').write_text('<html></html>')
+    (frontend / 'dist' / 'favicon.svg').write_text('<svg/>')
+    (frontend / 'dist' / 'favicon.ico').write_bytes(b'icon fixture')
     (frontend / 'dist' / 'assets' / 'main.js').write_text('console.log(1)')
     lib = frontend / 'node_modules' / 'typescript'
     (lib / 'lib').mkdir(parents=True)
@@ -51,6 +53,8 @@ def test_packager_checks_prebuilt_asset_completeness(tmp_path):
     (demo / 'models' / 'model.py').write_text('pass\n')
     web, vendor = builder.prepare_release_assets(frontend, pkg, demo)
     assert (web / 'assets' / 'main.js').exists()
+    assert (web / 'favicon.svg').exists()
+    assert (web / 'favicon.ico').exists()
     assert (vendor / 'typescript.js').exists()
     assert (pkg / 'demo_addon' / 'models' / 'model.py').exists()
     # A second build must not leave stale static files from the previous build.
@@ -95,3 +99,14 @@ def test_license_distribution_metadata():
     for path in ('LICENSE', 'LICENSES/GPL-3.0-only.txt',
                  'backend/LICENSE', 'backend/LICENSES/GPL-3.0-only.txt'):
         assert (root / path).is_file(), path
+
+
+def test_frontend_favicon_assets_are_valid_and_declared():
+    root = Path(__file__).resolve().parents[2] / 'frontend'
+    html = (root / 'index.html').read_text(encoding='utf-8')
+    assert 'href="/favicon.svg"' in html
+    assert 'href="/favicon.ico"' in html
+    assert (root / 'public' / 'favicon.svg').read_text(encoding='utf-8').startswith('<svg')
+    ico = (root / 'public' / 'favicon.ico').read_bytes()
+    assert len(ico) > 500
+    assert ico[:4] == b'\x00\x00\x01\x00'

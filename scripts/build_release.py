@@ -50,6 +50,9 @@ def prepare_release_assets(frontend: Path = FRONTEND, app: Path = APP,
         raise ReleaseBuildError('Missing frontend/dist/index.html. Run npm run build in frontend.')
     if not any((compiled / 'assets').glob('*.js')):
         raise ReleaseBuildError('Missing frontend/dist/assets/*.js — UI build looks incomplete.')
+    for icon in ('favicon.svg', 'favicon.ico'):
+        if not (compiled / icon).is_file():
+            raise ReleaseBuildError(f'Missing frontend/dist/{icon}. Rebuild frontend UI.')
     if not parser.is_file() or not license_file.is_file():
         raise ReleaseBuildError('Missing TypeScript runtime or LICENSE. Run npm install in frontend.')
     if not (demo / '__manifest__.py').is_file():

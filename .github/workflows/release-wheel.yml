@@ -36,7 +36,8 @@ jobs:
               names = z.namelist()
               for expected in ('app/web_dist/index.html', 'app/vendor/typescript.js',
                                'app/vendor/LICENSE.txt', 'app/demo_addon/__manifest__.py',
-                               'app/parsers/js_ast_bridge.cjs'):
+                               'app/parsers/js_ast_bridge.cjs', 'app/web_dist/favicon.svg',
+                               'app/web_dist/favicon.ico'):
                   assert any(n.endswith(expected) for n in names), expected
               assert any('/web_dist/assets/' in n and n.endswith('.js') for n in names)
               assert any(n.endswith('.dist-info/licenses/LICENSE') for n in names)
