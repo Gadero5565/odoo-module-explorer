@@ -8,7 +8,7 @@ client = TestClient(app)
 
 
 def test_health():
-    assert client.get("/api/health").json() == {"status": "ok", "phase": "9"}
+    assert client.get("/api/health").json() == {"status": "ok"}
 
 
 def test_demo_analysis():

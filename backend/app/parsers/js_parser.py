@@ -36,8 +36,8 @@ def inspect_js_source(relative_path: str, data: bytes) -> JSInspection:
     try:
         result = subprocess.run(
             ['node', str(BRIDGE), relative_path],
-            input=source.encode('utf-8'), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=JS_TIMEOUT_SECONDS, check=False,
+            input=source.encode('utf-8'), capture_output=True,
+            timeout=JS_TIMEOUT_SECONDS, check=False,
             cwd=BRIDGE.parent,
         )
     except FileNotFoundError as exc:

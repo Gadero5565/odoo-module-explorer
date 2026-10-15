@@ -2,7 +2,6 @@
 
 from app.parsers.python_parser import inspect_python_source
 
-
 SOURCE = '''from odoo import models, fields
 
 @api.model

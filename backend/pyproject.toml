@@ -7,6 +7,8 @@ name = "odoo-module-explorer-backend"
 version = "0.1.0"
 description = "Local static structure and Odoo semantics explorer for Odoo addons 16–19"
 requires-python = ">=3.10"
+license = "LGPL-3.0-only"
+license-files = ["LICENSE", "LICENSES/GPL-3.0-only.txt"]
 dependencies = [
     "fastapi>=0.115,<1",
     "uvicorn[standard]>=0.30,<1",

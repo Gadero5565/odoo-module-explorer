@@ -102,7 +102,7 @@ def test_cache_reparses_changed_file_only_and_reuses_insights(tmp_path):
     src1.write_text('def first():\n    return 1\n')
     src2.write_text('def second():\n    return 2\n')
     start = client.get('/api/cache/stats').json()
-    for i in range(2):
+    for _ in range(2):
         res = client.post('/api/insights', json={'module_path': str(root)})
         assert res.status_code == 200, res.text
     stats = client.get('/api/cache/stats').json()

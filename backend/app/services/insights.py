@@ -11,11 +11,11 @@ import tokenize
 from pathlib import Path
 
 from app.core.scanner import DirectoryScanner
-from app.parsers.js_parser import JSInspectionError, MAX_JS_BYTES, inspect_js_source
+from app.parsers.js_parser import MAX_JS_BYTES, JSInspectionError, inspect_js_source
 from app.parsers.python_parser import MAX_PYTHON_BYTES, inspect_python_source
 from app.parsers.style_parser import MAX_STYLE_BYTES, inspect_style_source
 from app.parsers.xml_parser import MAX_XML_BYTES, inspect_xml_source
-from app.schemas.insights import InsightSymbol, InsightsResponse, ModelLink, OdooModelSummary
+from app.schemas.insights import InsightsResponse, InsightSymbol, ModelLink, OdooModelSummary
 
 MAX_FILES = 500
 MAX_BYTES = 24 * 1024 * 1024
@@ -25,7 +25,7 @@ ALLOWED_EXTENSIONS = {'.py', '.xml', '.js', '.scss', '.css'}
 INDEX_KINDS = {
     'class', 'method', 'async_method', 'function', 'async_function', 'odoo_field',
     'view', 'action', 'menu', 'record', 'template', 'xpath',
-    'service', 'registration', 'selector', 'mixin', 'function', 'variable',
+    'service', 'registration', 'selector', 'mixin', 'variable',
 }
 
 

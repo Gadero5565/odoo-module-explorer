@@ -6,7 +6,6 @@ import pytest
 
 from app.parsers.js_parser import JSInspectionError, inspect_js_source
 
-
 SAMPLE = b'''/** @odoo-module */
 import { Component, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";

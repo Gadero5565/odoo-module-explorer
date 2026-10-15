@@ -71,7 +71,7 @@ def test_multiline_tags_utf8_crlf_and_same_line_elements():
     raw = ('<?xml version="1.0"?>\r\n<odoo>\r\n'
            ' <menuitem\r\n id="café"\r\n name="A > B"/>\r\n'
            ' <record id="x" model="a.b"><field name="x">ok</field></record>\r\n'
-           '</odoo>\r\n').encode('utf-8')
+           '</odoo>\r\n').encode()
     analysis = inspect_xml_source('test.xml', raw)
     assert analysis.parse_error is None
     nodes = list(_walk(analysis.file))

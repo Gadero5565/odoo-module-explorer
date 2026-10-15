@@ -122,7 +122,9 @@ def test_nested_depth_limit_preserves_file():
 
 def test_reject_non_utf8_and_excessive_size():
     import pytest
+
     from app.parsers.style_parser import MAX_STYLE_BYTES, StyleInspectionError
+
     with pytest.raises(StyleInspectionError, match='UTF-8'):
         inspect_style_source('a.css', b'\xff')
     with pytest.raises(StyleInspectionError, match='3 MiB'):

@@ -1,20 +1,18 @@
-# Odoo Module Explorer changelog
+# Changelog
 
-Notable changes are recorded by release rather than by internal development milestones.
+All notable user-facing changes to Odoo Module Explorer are documented here. The project uses semantic versions.
 
 ## Unreleased
 
-### Changed
-- Hide Python Odoo field declarations and residual code nodes by default, with independent controls in Display filters.
-- Make Python treemap statistics and rankings respond to visible symbols while retaining original physical source metrics.
-- Remove private addon examples and internal development history from the public UI and documentation.
-- Refresh documentation with generic installation and release instructions.
-
-## 0.1.0 — Initial standalone application
-
 ### Added
-- Local FastAPI server, React web interface, interactive filesystem and symbol treemaps.
-- Odoo-aware Python, XML/QWeb, JavaScript/OWL, and SCSS/CSS static inspection.
-- Cross-file symbol search, Odoo model insights and relationship visualization.
-- Incremental parse caching, module refresh monitoring, and robust error handling.
-- CLI launcher, bundled wheel build, sample addon, and automated test suites.
+- Local FastAPI-based static analysis and React interactive treemap.
+- Odoo 16–19 Python model, field, method and controller inspection.
+- XML/QWeb, JavaScript/OWL and CSS/SCSS structural analysis.
+- Symbol search, static model relationships, cache-backed refresh and CLI launch.
+- Bundled source example addon and wheel distribution tooling.
+
+### Improved
+- Hide Odoo field and residual declaration nodes in Python treemaps by default, with independent visibility controls.
+- Provide separate installation and contributor workflows, with explicit npm setup before source JavaScript tests.
+- Add local, reproducible deployment instructions and troubleshooting guidance.
+- Apply LGPL-3.0-only project licensing and include the license text in Python distributions.

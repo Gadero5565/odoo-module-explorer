@@ -1,11 +1,38 @@
-# Contributing
+# Contributing to Odoo Module Explorer
 
-Thank you for improving Odoo Module Explorer. Please open an issue describing a bug or enhancement before a large change.
+Contributions, bug reports, tests and documentation improvements are welcome. Please check existing issues before proposing a major change.
 
-## Local development
+## Development environment
 
-Use Python 3.10+ and Node.js 20+; see the root README for backend and frontend commands. Keep parsers static and read-only: never import or execute analyzed addon code. Preserve accurate physical byte totals independently from display filtering, and provide test fixtures for Odoo 16–19 semantics when adding language features.
+See **[Build from source](INSTALLATION.md#build-from-source)** for the complete setup and the correct command order: install frontend dependencies with `npm ci` before running backend tests that exercise JavaScript analysis.
 
-Run `python -m pytest -q` from `backend/` and `npm test && npm run build` from `frontend/` before submitting a pull request.
+Required for development: Python 3.10–3.13, Node.js 20.19+ or 22.12+ with npm, Git, and an isolated Python environment.
 
-Do not submit private company addons, proprietary source files, API credentials, or production database dumps. Prefer minimal synthetic samples in `samples/` or test fixtures.
+## Validation
+
+Run these checks before opening a pull request:
+
+```powershell
+# In frontend/
+npm ci
+npm test
+npm run build
+```
+
+```powershell
+# In backend/ after frontend npm ci
+python -m pytest -q
+python -m ruff check app tests
+```
+
+## Code and security practices
+
+- Keep source analysis read-only. Parsers must not import or execute code from addons under inspection.
+- Preserve physical source byte counts independently from treemap display filters.
+- Include regression tests with representative Odoo 16–19 source fixtures when changing parsers.
+- Keep analysis size limits, warnings, and path validation explicit.
+- Do not submit proprietary addons, secrets, real company data, or production database dumps; use synthetic samples instead.
+
+## Pull requests
+
+Describe the behavior you are changing, the tests performed and any user-visible limitations. Submit changes against `main` through a pull request. Code contributions are accepted under the project's [LGPL-3.0-only license](../LICENSE).

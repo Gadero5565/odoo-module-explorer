@@ -12,9 +12,10 @@ import hashlib
 import json
 import threading
 from collections import OrderedDict
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from app.core.scanner import DirectoryScanner, _line_count
 from app.schemas.analysis import AnalysisResult, ModuleDetails, ScanWarning

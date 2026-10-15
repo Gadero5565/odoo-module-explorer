@@ -7,7 +7,10 @@ Only literal values are interpreted; expressions are shown as text or left unkno
 import ast
 
 from app.schemas.odoo_inspection import (
-    OdooClassInfo, OdooFieldInfo, OdooMethodInfo, OdooRouteInfo,
+    OdooClassInfo,
+    OdooFieldInfo,
+    OdooMethodInfo,
+    OdooRouteInfo,
 )
 
 ORM_OVERRIDES = {

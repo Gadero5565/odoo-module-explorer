@@ -1,10 +1,13 @@
-name: Verify and package first release
+name: Build and verify distribution
 
 on:
   workflow_dispatch:
   push:
     tags:
       - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
   package:
@@ -36,6 +39,8 @@ jobs:
                                'app/parsers/js_ast_bridge.cjs'):
                   assert any(n.endswith(expected) for n in names), expected
               assert any('/web_dist/assets/' in n and n.endswith('.js') for n in names)
+              assert any(n.endswith('.dist-info/licenses/LICENSE') for n in names)
+              assert any(n.endswith('.dist-info/licenses/LICENSES/GPL-3.0-only.txt') for n in names)
           print('Wheel contains compiled UI, licensed parser and demo addon')
           PY
       - name: Install wheel into isolated environment
@@ -65,3 +70,14 @@ jobs:
           name: odoo-module-explorer-wheel
           path: release/*.whl
           if-no-files-found: error
+
+      - name: Prepare draft GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" release/*.whl --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" release/*.whl --draft --generate-notes
+          fi

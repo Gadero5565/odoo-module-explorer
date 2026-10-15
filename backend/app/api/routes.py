@@ -12,12 +12,18 @@ from app.parsers.js_parser import MAX_JS_BYTES, JSInspectionError, inspect_js_so
 from app.parsers.python_parser import MAX_PYTHON_BYTES, PythonInspectionError, inspect_python_source
 from app.parsers.style_parser import MAX_STYLE_BYTES, StyleInspectionError, inspect_style_source
 from app.parsers.xml_parser import MAX_XML_BYTES, XMLInspectionError, inspect_xml_source
-from app.schemas.analysis import AnalysisResult, AnalyzeRequest, ConfigResponse, RefreshRequest, RefreshResult
+from app.schemas.analysis import (
+    AnalysisResult,
+    AnalyzeRequest,
+    ConfigResponse,
+    RefreshRequest,
+    RefreshResult,
+)
 from app.schemas.insights import InsightRequest, InsightsResponse
-from app.schemas.js_inspection import JSInspectRequest, JSInspection
-from app.schemas.python_inspection import PythonInspectRequest, PythonInspection
-from app.schemas.style_inspection import StyleInspectRequest, StyleInspection
-from app.schemas.xml_inspection import XMLInspectRequest, XMLInspection
+from app.schemas.js_inspection import JSInspection, JSInspectRequest
+from app.schemas.python_inspection import PythonInspection, PythonInspectRequest
+from app.schemas.style_inspection import StyleInspection, StyleInspectRequest
+from app.schemas.xml_inspection import XMLInspection, XMLInspectRequest
 from app.services.insights import build_insights
 from app.services.refresh import cache
 
@@ -27,7 +33,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 @router.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "phase": "9"}
+    return {"status": "ok"}
 
 
 @router.get("/config", response_model=ConfigResponse)

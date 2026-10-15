@@ -86,3 +86,12 @@ def test_release_builder_missing_windows_npm(monkeypatch):
     spec.loader.exec_module(builder)
     monkeypatch.setattr(builder.shutil, 'which', lambda name: None)
     assert builder._npm_executable(windows=True) is None
+
+
+def test_license_distribution_metadata():
+    root = Path(__file__).resolve().parents[2]
+    metadata = (root / 'backend' / 'pyproject.toml').read_text(encoding='utf-8')
+    assert 'license = "LGPL-3.0-only"' in metadata
+    for path in ('LICENSE', 'LICENSES/GPL-3.0-only.txt',
+                 'backend/LICENSE', 'backend/LICENSES/GPL-3.0-only.txt'):
+        assert (root / path).is_file(), path
