@@ -4,6 +4,24 @@
 
 [Installation](docs/INSTALLATION.md) · [Usage](docs/USAGE.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Contributing](docs/CONTRIBUTING.md) · [Changelog](CHANGELOG.md) · [License](LICENSE)
 
+## Open the app again (after installation)
+
+**Already installed Odoo Module Explorer? You do not need to reinstall it, run npm, or start a development server.** Open a new PowerShell terminal and launch the executable in the Python environment where you installed the wheel.
+
+If you followed the recommended Windows wheel installation guide, run this from **any directory**:
+
+```powershell
+& "$env:USERPROFILE\OdooModuleExplorer\.venv\Scripts\odoo-explorer.exe"
+```
+
+The browser opens at **http://127.0.0.1:7764** while the terminal stays running. To analyze an addon directly, add its directory as a quoted argument:
+
+```powershell
+& "$env:USERPROFILE\OdooModuleExplorer\.venv\Scripts\odoo-explorer.exe" "C:\odoo\custom_addons\my_addon"
+```
+
+If you installed the wheel in **another virtual environment** (such as `.release-venv` inside a source checkout), run the `odoo-explorer.exe` in **that** environment instead. See **[Start the application again](docs/INSTALLATION.md#start-the-application-again)** for all supported installation layouts and an optional Windows desktop shortcut. Stop the server with `Ctrl+C`.
+
 ## Features
 
 - **Interactive treemap:** navigate directories, files, classes, methods and source elements by physical bytes, lines or other applicable metrics.

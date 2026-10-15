@@ -9,6 +9,59 @@ Choose the installation method that matches the files you have:
 
 The commands below are for **Windows PowerShell**. On Linux/macOS, use the equivalent `python3 -m venv`, `python -m pip`, and `<venv>/bin/odoo-explorer` commands.
 
+## Start the application again
+
+**Already installed the application? Skip the installation steps below.** You can reopen Odoo Module Explorer whenever you want by running the executable from the Python virtual environment used during installation. No `npm ci`, backend tests, or rebuild is needed to reopen an installed wheel.
+
+Open **PowerShell** and use the command matching your installation:
+
+**Recommended prebuilt wheel installation** (the default directory created by [Install a prebuilt wheel](#install-a-prebuilt-wheel)):
+
+```powershell
+& "$env:USERPROFILE\OdooModuleExplorer\.venv\Scripts\odoo-explorer.exe"
+```
+
+**Standalone wheel test installation** (the folder created by [Build from source](#build-from-source)):
+
+```powershell
+& "$env:USERPROFILE\OdooExplorerWheelTest\.venv\Scripts\odoo-explorer.exe"
+```
+
+**Installed with `scripts/install_release.ps1`** in a repository checkout (run this from that checkout's root):
+
+```powershell
+.\.release-venv\Scripts\odoo-explorer.exe
+```
+
+You can also use an **absolute path** to that checkout's `.release-venv\Scripts\odoo-explorer.exe` to start it from any directory. If your installation is in a custom location, replace the examples with the real path to its `odoo-explorer.exe`. An activated installation virtual environment also allows the shorter `odoo-explorer` command.
+
+To open a specific addon directly, provide a path containing `__manifest__.py`:
+
+```powershell
+& "$env:USERPROFILE\OdooModuleExplorer\.venv\Scripts\odoo-explorer.exe" "C:\odoo\custom_addons\my_addon"
+```
+
+The application serves **http://127.0.0.1:7764** and normally opens your browser. **Keep the PowerShell terminal running** during use; close the app with `Ctrl+C`. The URL by itself cannot start a stopped server. If the port is occupied, append `--port 17764` and visit `http://127.0.0.1:17764`.
+
+On Linux/macOS, the equivalent executable is usually `~/OdooModuleExplorer/.venv/bin/odoo-explorer`, or `<your-venv>/bin/odoo-explorer` for a custom installation.
+
+### Optional: create a Windows desktop shortcut
+
+To launch Odoo Module Explorer by double-clicking a shortcut, run the following **once**, after completing the recommended wheel installation:
+
+```powershell
+$Explorer = Join-Path $env:USERPROFILE 'OdooModuleExplorer\.venv\Scripts\odoo-explorer.exe'
+if (-not (Test-Path $Explorer)) { throw 'Explorer not found. Install the wheel first or set $Explorer to your actual installed executable.' }
+$Desktop = [Environment]::GetFolderPath('Desktop')
+$Shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $Desktop 'Odoo Module Explorer.lnk'))
+$Shortcut.TargetPath = $Explorer
+$Shortcut.WorkingDirectory = Split-Path $Explorer -Parent
+$Shortcut.Description = 'Launch Odoo Module Explorer locally'
+$Shortcut.Save()
+```
+
+Afterward, double-click **Odoo Module Explorer** on your desktop. The application still needs its terminal window to remain open. If you move or delete the installation environment, update the shortcut or reinstall the wheel. Do not point the shortcut at the source folder or the `.whl` file.
+
 ## Prerequisites
 
 - Python **3.10–3.13** with pip. Commands below use `py -3.10`; substitute an installed compatible version as needed.
@@ -49,11 +102,7 @@ Run an addon directly:
 
 If the selected port is occupied, run `& $Explorer --port 17764`. Stop the app with `Ctrl+C` in its terminal.
 
-**Start again later:**
-
-```powershell
-& "$env:USERPROFILE\OdooModuleExplorer\.venv\Scripts\odoo-explorer.exe"
-```
+To launch the installed application on a later day, see [Start the application again](#start-the-application-again).
 
 The wheel includes the compiled React interface and TypeScript grammar. Node.js is still required for JavaScript/OWL inspection, but no frontend dev server or npm setup is needed.
 
